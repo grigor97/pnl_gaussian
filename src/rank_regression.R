@@ -109,7 +109,7 @@ find_f1_coefs_fixed_point <- function(Y, X, tol=1e-9, max_iter=300) {
 #'
 #' @examples
 find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, tol=1e-9, 
-                                                 max_iter=300) {
+                                                 max_iter=100) {
   if (!is.matrix(X)) {
     X <- as.matrix(X)
   }
@@ -155,28 +155,6 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, tol=1e-9,
   return(coefs)
 }
 
-#' Title computes the value of G(beta)
-#'
-#' @param beta coefficients
-#' @param ecdf_Y adjusted empirical CDF of Y
-#' @param X matrix X with rows X_i corresponding to response variable Y_i
-#'
-#' @return value of function G in beta
-#' @export
-#'
-#' @examples
-Gbeta <- function(beta, ecdf_Y, X) {
-  if (!is.matrix(X)) {
-    X <- as.matrix(X)
-  }
-  
-  sub_vals <- X %*% beta
-  zhat <- as.vector(sapply(ecdf_Y, inverse_cdf_z, arg=sub_vals))
-  
-  res <- t(X) %*% (zhat - X %*% beta)
-  return (res)
-}
-
 #' Title simulate rank regression data by random coefficients
 #'
 #' @param n number of samples
@@ -188,21 +166,74 @@ Gbeta <- function(beta, ecdf_Y, X) {
 #' @examples
 simulate_rank_regression_data <- function(n, m) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  
+
   noise <- rnorm(n)
   X <- matrix(rnorm(n*m), n, m)
-  
+
   beta <- runif(n=m, min=-100, max=100)
-  beta[1] <- 0
-  beta[3] <- 0
-  beta[4] <- 0
-  
+  # beta[1] <- 0
+  # beta[3] <- 0
+  # beta[4] <- 0
+
   Y <- X %*% beta + noise
   Y <- exponent(Y, 1/3) + 4.7
-  
+
   res <- list("X"=X, "Y"=Y, "beta"=beta)
   return(res)
 }
+
+#FIXME check the algorithm
+find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
+  G_j_beta <- function(j, beta, X) {
+    val <- 0
+    for(i in 1:nrow(X)) {
+      val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
+    }
+    return (1/2 + val)
+  }
+  
+  S_beta <- function(beta, X, ranks_Y) {
+    val <- 0
+    for(j in 1:nrow(X)) {
+      val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
+    }
+    
+    return (val)
+  }
+  
+  if (!is.matrix(X)) {
+    X <- as.matrix(X)
+  }
+  
+  m <- ncol(X)
+  n <- nrow(X)
+  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
+  ranks_Y <- rank(Y)
+  
+  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", 
+                     X=X, ranks_Y=ranks_Y)
+  
+  return(est_beta$par)
+}
+
+data <- simulate_rank_regression_data(1000, 1)
+system.time(
+  coefs <- find_f1_coefs_expected_rank_algorithm(data$Y, data$X)
+)
+coefs
+data$beta
+
+
+find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100) {
+  ranks_Y <- rank(Y)
+  n <- nrow(X)
+  m <- ncol(X)
+  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
+  for(iter in 1:max_iter) {
+    
+  }
+}
+
 
 #' Title run rank regression algorithms 
 #' for specific arguments and number of datasets
@@ -217,7 +248,7 @@ simulate_rank_regression_data <- function(n, m) {
 #' @examples
 run_rank_regression_algorithms <- function(n=1000, m=1, number_of_datasets=100){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  betas <- c(0.01, 0.1, 1, 10, 50, 100, 300)
+  betas <- c(0.01, 0.1, 1, 10, 30, 100, 300, 1000)
   
   rank_reg_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
   for(i in 1:number_of_datasets) {
@@ -238,10 +269,12 @@ run_rank_regression_algorithms <- function(n=1000, m=1, number_of_datasets=100){
       
       rank_reg_est_betas[i, j] <- pred_beta
     }
+    EST_betas <- rank_reg_est_betas
   }
   return (list("rank_reg_est_betas"=rank_reg_est_betas, "betas"=betas))
 }
 
+EST_betas <- 0
 
 #' Title run rank regression algorithms and 
 #' save a boxplots of the estimated betas
@@ -504,4 +537,26 @@ res
 #     ranks[col_name] <- rank(df[[col_name]])
 #   }
 #   return(ranks)
+# }
+
+#' Title computes the value of G(beta)
+#'
+#' @param beta coefficients
+#' @param ecdf_Y adjusted empirical CDF of Y
+#' @param X matrix X with rows X_i corresponding to response variable Y_i
+#'
+#' @return value of function G in beta
+#' @export
+#'
+#' @examples
+# Gbeta <- function(beta, ecdf_Y, X) {
+#   if (!is.matrix(X)) {
+#     X <- as.matrix(X)
+#   }
+#   
+#   sub_vals <- X %*% beta
+#   zhat <- as.vector(sapply(ecdf_Y, inverse_cdf_z, arg=sub_vals))
+#   
+#   res <- t(X) %*% (zhat - X %*% beta)
+#   return (res)
 # }
