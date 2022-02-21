@@ -5,6 +5,32 @@ library(ggplot2)
 
 set.seed(12)
 
+#' Title simulate rank regression data by random coefficients
+#'
+#' @param n number of samples
+#' @param m dimension of the coefficients
+#'
+#' @return returns a dataset 
+#' @export
+#'
+#' @examples
+simulate_rank_regression_data <- function(n, m) {
+  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+  
+  noise <- rnorm(n)
+  X <- matrix(rnorm(n*m), n, m)
+  
+  beta <- runif(n=m, min=-100, max=100)
+  # beta[1] <- 0
+  # beta[3] <- 0
+  # beta[4] <- 0
+  
+  Y <- X %*% beta + noise
+  Y <- exponent(Y, 1/3) + 4.7
+  
+  res <- list("X"=X, "Y"=Y, "beta"=beta)
+  return(res)
+}
 
 #' Title CDF  function for variable z 
 #'
@@ -42,57 +68,6 @@ inverse <- function(f, lower, upper){
 
 
 inverse_cdf_z<- inverse(cdf_z, -1000, 1000)
-
-#' Title finds beta coefficients using a fixed point iteration for a 
-#' whole data. Should be called only for small sizes of n(sample size) < 1000.
-#'
-#' @param Y n i.i.d. response variables Y_i = f_2^{-1}(beta^T x_i + error_i)
-#' @param X matrix X with rows X_i corresponding to Y_i
-#' @param tol tolerance, stop the algorithm when th error is smaller than @tol
-#' @param max_iter maximum number of iteration for the algorithm
-#'
-#' @return returns the values of coefficients
-#' @export 
-#'
-#' @examples 
-find_f1_coefs_fixed_point <- function(Y, X, tol=1e-9, max_iter=300) {
-  if (!is.matrix(X)) {
-    X <- as.matrix(X)
-  }
-  A <- t(X) %*% X
-  P <- inv(A) %*% t(X)
-
-  m <- ncol(X)
-  n <- nrow(X)
-  coefs <- runif(m, min=-10, max=10)
-
-  ranks_Y <- rank(Y)
-  empirical_cdf_Y <- ranks_Y/(n+1)
-
-  err <- 1
-
-  for(iter in 1:max_iter) {
-    print(paste("iter  ", iter))
-
-    sub_vals <- X %*% coefs
-    yhat <- as.vector(sapply(empirical_cdf_Y, inverse_cdf_z, arg=sub_vals))
-
-    a <- P %*% yhat
-    err <- sum((a - coefs)**2)**0.5
-
-    coefs <- a
-
-    print(paste("error is ", err))
-    print("coefs are ")
-    print(coefs)
-    if(err < tol) {
-      print("converged")
-      break
-    }
-  }
-
-  return(coefs)
-}
 
 #' Title dinds beta coefficients using a stochastic fixed point iteration. 
 #' Can be called for large sizes of n(sample size).
@@ -155,33 +130,6 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, tol=1e-9,
   return(coefs)
 }
 
-#' Title simulate rank regression data by random coefficients
-#'
-#' @param n number of samples
-#' @param m dimension of the coefficients
-#'
-#' @return returns a dataset 
-#' @export
-#'
-#' @examples
-simulate_rank_regression_data <- function(n, m) {
-  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-
-  noise <- rnorm(n)
-  X <- matrix(rnorm(n*m), n, m)
-
-  beta <- runif(n=m, min=-100, max=100)
-  # beta[1] <- 0
-  # beta[3] <- 0
-  # beta[4] <- 0
-
-  Y <- X %*% beta + noise
-  Y <- exponent(Y, 1/3) + 4.7
-
-  res <- list("X"=X, "Y"=Y, "beta"=beta)
-  return(res)
-}
-
 #FIXME check the algorithm
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   G_j_beta <- function(j, beta, X) {
@@ -210,67 +158,17 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   coefs <- matrix(runif(m, min=-10, max=10), m, 1)
   ranks_Y <- rank(Y)
   
-  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", 
-                     X=X, ranks_Y=ranks_Y)
+  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", X=X, ranks_Y=ranks_Y)
   
   return(est_beta$par)
 }
 
-data <- simulate_rank_regression_data(1000, 1)
-system.time(
-  coefs <- find_f1_coefs_expected_rank_algorithm(data$Y, data$X)
-)
-coefs
-data$beta
-
-
-#FIXME works only for small n and M, otherwise the u_beta become zero (vanishing)
-find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100) {
+# FIXME u_beta vanishing
+find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100, 
+                                                       tol=1e-9) {
+  n <- nrow(X)
+  m <- ncol(X)
   ranks_Y <- rank(Y)
-  n <- nrow(X)
-  m <- ncol(X)
-  coefs <- runif(m, min=-10, max=10)
-  
-  Z <- matrix(data=rnorm(M*n), nrow = n, ncol = M)
-  Z <- apply(Z, 2, sort)
-  Z <- Z[ranks_Y, ]
-  
-  inv_XTX <- NaN
-  if (m == 1) {
-    inv_XTX <- 1/t(X) %*% X
-  } else {
-    inv_XTX <- inv(t(X) %*% X)
-  }
-  
-  B <-  inv_XTX %*% t(X) %*% Z
-  Z_hat <- X %*% B
-  
-  ssf <- colSums(Z_hat**2)
-  v <- exp(ssf/2)
-  
-  for(iter in 1:max_iter) {
-    u_beta <- X %*% (B - coefs)
-    u_beta <- colSums(u_beta**2)
-    u_beta <- exp(-u_beta/2)
-    w <- v * u_beta
-    coefs <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B)
-    coefs <- rowSums(coefs)
-  }
-  
-  return (coefs)
-}
-
-data <- simulate_rank_regression_data(40, 2)
-coefs <- find_f1_coefs_monte_carlo_algorithm(data$Y, data$X, M = 20, max_iter = 3)
-
-coefs
-data$beta
-
-
-find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100, tol=1e-9) {
-  n <- nrow(X)
-  m <- ncol(X)
-  
   # centering a matrix column wise
   X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
   
@@ -284,7 +182,7 @@ find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100,
   
   inv_XTX <- NaN
   if (m == 1) {
-    inv_XTX <- 1/t(X) %*% X
+    inv_XTX <- 1/(t(X) %*% X)
   } else {
     inv_XTX <- inv(t(X) %*% X)
   }
@@ -297,12 +195,15 @@ find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100,
   TT <- matrix(t, m, M, byrow = T)
   v <- rss_hat**(-(n-1)/2)
   
+  coefs <- runif(m, min=-10, max=10)
+  
   for(i in 1:max_iter) {
-    U_beta <- X %*% (TT*B - coefs)
+    U_beta <- X %*% (TT*B_hat - coefs)
     u_beta <- colSums(U_beta**2)
     u_beta <- exp(-u_beta/2)
+    print(u_beta)
     w <- v * u_beta
-    coefs_next <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B)
+    coefs_next <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B_hat)
     coefs_next <- rowSums(coefs)
     
     err <- (sum(coefs_next - coefs)**2)**0.5
@@ -317,9 +218,6 @@ find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100,
   return (coefs)
 }
 
-x <- matrix(1:12, 3, 4)
-x - matrix(rep(colMeans(x), nrow(x)), nrow(x), ncol(x), byrow = T)
-apply(x, 2, sd)
 #' Title run rank regression algorithms 
 #' for specific arguments and number of datasets
 #'
@@ -334,9 +232,10 @@ apply(x, 2, sd)
 #FIXME run parallel
 run_rank_regression_algorithms <- function(n, m, number_of_datasets){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  betas <- c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 10, 30, 100)
+  betas <- c(0.01, 0.1, 0.3, 0.5) #, 0.7, 0.9, 1, 10, 30, 100)
   
   rank_reg_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
+  expected_rank_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
   for(i in 1:number_of_datasets) {
     print(paste("dataset ", i))
     X <- matrix(rnorm(n*m), n, m)
@@ -347,16 +246,20 @@ run_rank_regression_algorithms <- function(n, m, number_of_datasets){
       Y <- X %*% beta + noise
       Y <- exponent(Y, 1/3) + 4.7
       
-      ranks_Y <- rank(Y)
-      ecdf_Y <- ranks_Y/(n+1)
+      # ranks_Y <- rank(Y)
+      # ecdf_Y <- ranks_Y/(n+1)
+      # 
+      # pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size = 64, 
+      #                                                   max_iter = 100, tol=1e-9)
+      pred_beta <- find_f1_coefs_expected_rank_algorithm(Y, X)
       
-      pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size = 64, 
-                                                        max_iter = 100, tol=1e-9)
-      
-      rank_reg_est_betas[i, j] <- pred_beta
+      # rank_reg_est_betas[i, j] <- pred_beta
+      expected_rank_est_betas[i, j] <- pred_beta
     }
   }
-  return (list("rank_reg_est_betas"=rank_reg_est_betas, "betas"=betas))
+  return (list("rank_reg_est_betas"=rank_reg_est_betas, 
+               "expected_rank_est_betas"=expected_rank_est_betas,
+               "betas"=betas))
 }
 
 
@@ -369,7 +272,7 @@ run_rank_regression_algorithms <- function(n, m, number_of_datasets){
 #' @export
 #'
 #' @examples
-run_algorithms_and_save_plots <- function(number_of_datasets=100, file_n='/Users/grigorkeropyan/pnl_gaussian/plots/'){
+run_algorithms_and_save_plots <- function(number_of_datasets=10, file_n='/Users/grigorkeropyan/pnl_gaussian/plots/'){
   res <- run_rank_regression_algorithms(n=1000, m=1, number_of_datasets=number_of_datasets)
   rank_reg_est_betas <- res$rank_reg_est_betas
   betas <- res$betas
@@ -399,13 +302,23 @@ run_algorithms_and_save_plots <- function(number_of_datasets=100, file_n='/Users
   return (res)
 }
 
+
+data <- simulate_rank_regression_data(10, 2)
+coefs <- find_f1_coefs_stable_monte_carlo_algorithm(data$Y, data$X, M = 5, max_iter = 3)
+
+coefs
+data$beta
+
 res <- run_algorithms_and_save_plots()
 res
 
-dat <- stack(as.data.frame(res$rank_reg_est_betas[, 1:7]))
+res <- run_rank_regression_algorithms(n=1000, m=1, number_of_datasets=10)
+res
+
+dat <- stack(as.data.frame(res$expected_rank_est_betas[, 1:2]))
 pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated betas')) + 
-  geom_point(aes(x=unique(dat$ind), y=res$betas[1:7], colour='ground truth betas')) + 
-  labs(title="rank regression for 100 datasets", x="",y="betas") +
+  geom_point(aes(x=unique(dat$ind), y=res$betas[1:2], colour='ground truth betas')) + 
+  labs(title="expected rank regression for 10 datasets", x="",y="betas") +
   scale_color_manual(name='', 
                      breaks=c('estimated betas', 'ground truth betas'),
                      values=c('black', 'red')) +
@@ -415,8 +328,20 @@ pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated bet
   ))) +
   # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
   theme(legend.position='top', plot.title = element_text(hjust = 0.5))
+pl
+ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/expected_rank_reg_box_plots.png', plot = pl)
+
 
 res$betas
+means_est_betas <- colMeans(res$rank_reg_est_betas)
+pl1 <- ggplot() + geom_line(aes(x=res$betas[1:10], y=res$betas[1:10] - means_est_betas[1:10]))+
+  labs(title = "rank regression for 100 datasets", 
+       x="ground truth betas", y="l_2 dist of betas") +
+  theme(plot.title = element_text(hjust = 0.5))
+pl1
+
+ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/rank_reg_diff_plot_100.png', plot = pl1)
+
 # data <- simulate_rank_regression_data(10000, 6)
 # saveRDS(data, '/Users/grigorkeropyan/pnl_gaussian/datasets/data1')
 # data <- readRDS('/Users/grigorkeropyan/pnl_gaussian/datasets/data1')
@@ -659,4 +584,98 @@ res$betas
 #   
 #   res <- t(X) %*% (zhat - X %*% beta)
 #   return (res)
+# }
+# 
+# #FIXME works only for small n and M, otherwise the u_beta become zero (vanishing)
+# find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100) {
+#   ranks_Y <- rank(Y)
+#   n <- nrow(X)
+#   m <- ncol(X)
+#   coefs <- runif(m, min=-10, max=10)
+#   
+#   Z <- matrix(data=rnorm(M*n), nrow = n, ncol = M)
+#   Z <- apply(Z, 2, sort)
+#   Z <- Z[ranks_Y, ]
+#   
+#   inv_XTX <- NaN
+#   if (m == 1) {
+#     inv_XTX <- 1/(t(X) %*% X)
+#   } else {
+#     inv_XTX <- inv(t(X) %*% X)
+#   }
+#   
+#   B <-  inv_XTX %*% t(X) %*% Z
+#   Z_hat <- X %*% B
+#   
+#   ssf <- colSums(Z_hat**2)
+#   v <- exp(ssf/2)
+#   
+#   for(iter in 1:max_iter) {
+#     u_beta <- X %*% (B - coefs)
+#     u_beta <- colSums(u_beta**2)
+#     u_beta <- exp(-u_beta/2)
+#     w <- v * u_beta
+#     coefs <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B)
+#     coefs <- rowSums(coefs)
+#   }
+#   
+#   return (coefs)
+# }
+# 
+# data <- simulate_rank_regression_data(40, 2)
+# coefs <- find_f1_coefs_monte_carlo_algorithm(data$Y, data$X, M = 20, max_iter = 3)
+# 
+# coefs
+# data$beta
+
+
+#' Title finds beta coefficients using a fixed point iteration for a
+#' whole data. Should be called only for small sizes of n(sample size) < 1000.
+#'
+#' @param Y n i.i.d. response variables Y_i = f_2^{-1}(beta^T x_i + error_i)
+#' @param X matrix X with rows X_i corresponding to Y_i
+#' @param tol tolerance, stop the algorithm when th error is smaller than @tol
+#' @param max_iter maximum number of iteration for the algorithm
+#'
+#' @return returns the values of coefficients
+#' @export
+#'
+#' @examples
+# find_f1_coefs_fixed_point <- function(Y, X, tol=1e-9, max_iter=300) {
+#   if (!is.matrix(X)) {
+#     X <- as.matrix(X)
+#   }
+#   A <- t(X) %*% X
+#   P <- inv(A) %*% t(X)
+# 
+#   m <- ncol(X)
+#   n <- nrow(X)
+#   coefs <- runif(m, min=-10, max=10)
+# 
+#   ranks_Y <- rank(Y)
+#   empirical_cdf_Y <- ranks_Y/(n+1)
+# 
+#   err <- 1
+# 
+#   for(iter in 1:max_iter) {
+#     print(paste("iter  ", iter))
+# 
+#     sub_vals <- X %*% coefs
+#     yhat <- as.vector(sapply(empirical_cdf_Y, inverse_cdf_z, arg=sub_vals))
+# 
+#     a <- P %*% yhat
+#     err <- sum((a - coefs)**2)**0.5
+# 
+#     coefs <- a
+# 
+#     print(paste("error is ", err))
+#     print("coefs are ")
+#     print(coefs)
+#     if(err < tol) {
+#       print("converged")
+#       break
+#     }
+#   }
+# 
+#   return(coefs)
 # }
