@@ -66,7 +66,6 @@ inverse <- function(f, lower, upper){
   }
 }
 
-
 inverse_cdf_z<- inverse(cdf_z, -1000, 1000)
 
 #' Title dinds beta coefficients using a stochastic fixed point iteration. 
@@ -163,8 +162,8 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   return(est_beta$par)
 }
 
-# FIXME u_beta vanishing
-find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100, 
+# FIXME works only for small n(<40), otherwise u_beta vanishes
+find_f1_coefs_conditional_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100, 
                                                        tol=1e-9) {
   n <- nrow(X)
   m <- ncol(X)
@@ -172,43 +171,72 @@ find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100,
   # centering a matrix column wise
   X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
   
-  Z <- matrix(data=rnorm(M*n), nrow = n, ncol = M)
-  Z_mean <- matrix(rep(colMeans(Z), n), n, M, byrow = T)
-  Z_sd <- matrix(rep(apply(Z, 2, sd), n), n, M, byrow = T)
-  Z <- Z - Z_mean
-  Z <- Z/Z_sd
-  Z <- apply(Z, 2, sort)
-  Z_hat <- Z[ranks_Y, ]
-  
   inv_XTX <- NaN
   if (m == 1) {
     inv_XTX <- 1/(t(X) %*% X)
   } else {
     inv_XTX <- inv(t(X) %*% X)
   }
+  M_mult <- inv_XTX %*% t(X)
   
-  B_hat <-  inv_XTX %*% t(X) %*% Z_hat
-  ssf_hat <- colSums((X %*% B_hat)**2)
-  rss_hat <- (n-1) - ssf_hat
+  B_hat <- matrix(0, nrow=m, ncol=M)
+  rss_hats <- c()
+
+  for(i in 1:M) {
+    # Generate standard normal sample, standardize by sample mean and standard 
+    # deviation, order and put into the same rank order as the original sample
+    max_val <- 1000
+    while(T) {
+      z <- rnorm(n)
+      z_hat <- (z - mean(z))/sd(z)
+      z <- sort(z_hat)
+      z_hat <- z_hat[ranks_Y]
+    
+      # finding b hat and ssf hat
+      b_hat <- M_mult %*% z_hat
+      ssf_hat <- sum((X %*% b_hat)**2)
+      rss_hat <- n-1-ssf_hat
+      print(rss_hat)
+      if(rss_hat > max_val) {
+        next
+      }
+     
+      B_hat[, i] <- b_hat
+      rss_hats <- c(rss_hats, rss_hat)
+      break
+    }
+  }
   
-  t <- ((n-3)/rss_hat)**0.5
+  t <- ((n-3)/rss_hats)**0.5
   TT <- matrix(t, m, M, byrow = T)
-  v <- rss_hat**(-(n-1)/2)
+  v <- rss_hats**(-(n-1)/2)
   
   coefs <- runif(m, min=-10, max=10)
-  
+  print("rss_hats")
+  print(rss_hats)
+  print("B_hat")
+  print(B_hat)
+  print("TT")
+  print(TT)
+  print("v ")
+  print(v)
   for(i in 1:max_iter) {
     U_beta <- X %*% (TT*B_hat - coefs)
     u_beta <- colSums(U_beta**2)
+    
     u_beta <- exp(-u_beta/2)
+    print("u_beta")
     print(u_beta)
     w <- v * u_beta
     coefs_next <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B_hat)
-    coefs_next <- rowSums(coefs)
+    coefs_next <- rowSums(coefs_next)
     
+    print("coefs next")
+    print(coefs_next)
     err <- (sum(coefs_next - coefs)**2)**0.5
     coefs <- coefs_next
     
+    print(paste("err ", err))
     if(err < tol) {
       print("converged ...")
       break
@@ -217,6 +245,13 @@ find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100,
   
   return (coefs)
 }
+# 
+# data <- simulate_rank_regression_data(30, 2)
+# coefs <- find_f1_coefs_conditional_monte_carlo_algorithm(data$Y, data$X, M = 100, max_iter = 10)
+# 
+# coefs
+# data$beta
+
 
 #' Title run rank regression algorithms 
 #' for specific arguments and number of datasets
@@ -232,7 +267,7 @@ find_f1_coefs_stable_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100,
 #FIXME run parallel
 run_rank_regression_algorithms <- function(n, m, number_of_datasets){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  betas <- c(0.01, 0.1, 0.3, 0.5) #, 0.7, 0.9, 1, 10, 30, 100)
+  betas <- c(0.01, 0.1)#, 0.3, 0.5) #, 0.7, 0.9, 1, 10, 30, 100)
   
   rank_reg_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
   expected_rank_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
@@ -249,11 +284,11 @@ run_rank_regression_algorithms <- function(n, m, number_of_datasets){
       # ranks_Y <- rank(Y)
       # ecdf_Y <- ranks_Y/(n+1)
       # 
-      # pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size = 64, 
-      #                                                   max_iter = 100, tol=1e-9)
+      pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size = 4,
+                                                        max_iter = 3, tol=1e-9)
       pred_beta <- find_f1_coefs_expected_rank_algorithm(Y, X)
       
-      # rank_reg_est_betas[i, j] <- pred_beta
+      rank_reg_est_betas[i, j] <- pred_beta
       expected_rank_est_betas[i, j] <- pred_beta
     }
   }
@@ -272,53 +307,47 @@ run_rank_regression_algorithms <- function(n, m, number_of_datasets){
 #' @export
 #'
 #' @examples
-run_algorithms_and_save_plots <- function(number_of_datasets=10, file_n='/Users/grigorkeropyan/pnl_gaussian/plots/'){
-  res <- run_rank_regression_algorithms(n=1000, m=1, number_of_datasets=number_of_datasets)
-  rank_reg_est_betas <- res$rank_reg_est_betas
-  betas <- res$betas
-  
-  dat <- stack(as.data.frame(rank_reg_est_betas))
-  title_name <- paste("rank regression for", number_of_datasets)
-  title_name <- paste(title_name, "datasets")
-  pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated betas')) + 
-    geom_point(aes(x=unique(dat$ind), y=betas, colour='ground truth betas')) + 
-    labs(title=title_name, x="",y="betas") +
-    scale_color_manual(name='', 
-                       breaks=c('estimated betas', 'ground truth betas'),
-                       values=c('black', 'red')) +
-    guides(colour = guide_legend(override.aes = list(
-      linetype = c("solid", "blank"),
-      color = c("black","red")
-    ))) +
-    # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
-    theme(legend.position='top', plot.title = element_text(hjust = 0.5))
-  
-  # file_name <- paste(file_n, 'rank_reg_alg/', sep='')
-  file_name <- paste(file_n, 'rank_reg_box_plots.png', sep='')
-  ggsave(filename = file_name, plot = pl)
-  
-  plot(pl)
-  
-  return (res)
-}
+# save_plots <- function(result, file_n='/Users/grigorkeropyan/pnl_gaussian/plots/'){
+#   rank_reg_est_betas <- result$rank_reg_est_betas
+#   betas <- result$betas
+#   
+#   dat <- stack(as.data.frame(rank_reg_est_betas))
+#   title_name <- paste("rank regression for", number_of_datasets)
+#   title_name <- paste(title_name, "datasets")
+#   pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated betas')) + 
+#     geom_point(aes(x=unique(dat$ind), y=betas, colour='ground truth betas')) + 
+#     labs(title=title_name, x="",y="betas") +
+#     scale_color_manual(name='', 
+#                        breaks=c('estimated betas', 'ground truth betas'),
+#                        values=c('black', 'red')) +
+#     guides(colour = guide_legend(override.aes = list(
+#       linetype = c("solid", "blank"),
+#       color = c("black","red")
+#     ))) +
+#     # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
+#     theme(legend.position='top', plot.title = element_text(hjust = 0.5))
+#   
+#   # file_name <- paste(file_n, 'rank_reg_alg/', sep='')
+#   file_name <- paste(file_n, 'rank_reg_box_plots.png', sep='')
+#   ggsave(filename = file_name, plot = pl)
+#   
+#   plot(pl)
+#   
+#   return (res)
+# }
 
 
-data <- simulate_rank_regression_data(10, 2)
-coefs <- find_f1_coefs_stable_monte_carlo_algorithm(data$Y, data$X, M = 5, max_iter = 3)
+# res <- run_algorithms_and_save_plots()
+# res
 
-coefs
-data$beta
+res <- run_rank_regression_algorithms(n=100, m=1, number_of_datasets=3)
+res$expected_rank_est_betas
+saveRDS(res, "result")
 
-res <- run_algorithms_and_save_plots()
-res
-
-res <- run_rank_regression_algorithms(n=1000, m=1, number_of_datasets=10)
-res
-
-dat <- stack(as.data.frame(res$expected_rank_est_betas[, 1:2]))
-pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated betas')) + 
-  geom_point(aes(x=unique(dat$ind), y=res$betas[1:2], colour='ground truth betas')) + 
-  labs(title="expected rank regression for 10 datasets", x="",y="betas") +
+exp_rank <- stack(as.data.frame(res$expected_rank_est_betas))
+pl <- ggplot() + geom_boxplot(aes(x=exp_rank$ind, y=exp_rank$values, colour='estimated betas')) + 
+  geom_point(aes(x=unique(exp_rank$ind), y=res$betas, colour='ground truth betas')) + 
+  labs(title="expected rank regression for 100 datasets", x="",y="betas") +
   scale_color_manual(name='', 
                      breaks=c('estimated betas', 'ground truth betas'),
                      values=c('black', 'red')) +
@@ -328,19 +357,35 @@ pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated bet
   ))) +
   # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
   theme(legend.position='top', plot.title = element_text(hjust = 0.5))
-pl
-ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/expected_rank_reg_box_plots.png', plot = pl)
+#pl
+ggsave(filename = 'expected_rank_reg_box_plots.png', plot = pl)
+
+rank_reg <- stack(as.data.frame(res$rank_reg_est_betas))
+pl <- ggplot() + geom_boxplot(aes(x=rank_reg$ind, y=rank_reg$values, colour='estimated betas')) + 
+  geom_point(aes(x=unique(rank_reg$ind), y=res$betas, colour='ground truth betas')) + 
+  labs(title="rank regression for 100 datasets", x="",y="betas") +
+  scale_color_manual(name='', 
+                     breaks=c('estimated betas', 'ground truth betas'),
+                     values=c('black', 'red')) +
+  guides(colour = guide_legend(override.aes = list(
+    linetype = c("solid", "blank"),
+    color = c("black","red")
+  ))) +
+  # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
+  theme(legend.position='top', plot.title = element_text(hjust = 0.5))
+#pl
+ggsave(filename = 'rank_reg_box_plots.png', plot = pl)
 
 
-res$betas
-means_est_betas <- colMeans(res$rank_reg_est_betas)
-pl1 <- ggplot() + geom_line(aes(x=res$betas[1:10], y=res$betas[1:10] - means_est_betas[1:10]))+
-  labs(title = "rank regression for 100 datasets", 
-       x="ground truth betas", y="l_2 dist of betas") +
-  theme(plot.title = element_text(hjust = 0.5))
-pl1
-
-ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/rank_reg_diff_plot_100.png', plot = pl1)
+# res$betas
+# means_est_betas <- colMeans(res$rank_reg_est_betas)
+# pl1 <- ggplot() + geom_line(aes(x=res$betas[1:10], y=res$betas[1:10] - means_est_betas[1:10]))+
+#   labs(title = "rank regression for 100 datasets", 
+#        x="ground truth betas", y="l_2 dist of betas") +
+#   theme(plot.title = element_text(hjust = 0.5))
+# pl1
+# 
+# ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/rank_reg_diff_plot_100.png', plot = pl1)
 
 # data <- simulate_rank_regression_data(10000, 6)
 # saveRDS(data, '/Users/grigorkeropyan/pnl_gaussian/datasets/data1')
@@ -679,3 +724,6 @@ ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/rank_reg_diff_plot_1
 # 
 #   return(coefs)
 # }
+f <- function(x) pbeta(x, shape1=2, shape2=3)
+f.inv <- inverse(f,lower=0,upper=1)
+f.inv(.2)
