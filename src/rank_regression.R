@@ -161,7 +161,7 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   return(est_beta$par)
 }
 
-run_rank_regression_algorithms <- function(n, m, max_iter=100, batch_size=64){
+run_rank_regression_algorithms <- function(n, m, max_iter, batch_size){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   betas <- c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 10, 30, 50, 70, 100, 1000)
   
@@ -190,11 +190,11 @@ run_rank_regression_algorithms <- function(n, m, max_iter=100, batch_size=64){
   }
   return (list("fixed_est_betas"=fixed_est_betas, 
                "expected_est_betas"=expected_est_betas,
-               "betas"=betas))
+               "betas"=betas, "n"=n, "m"=m))
 }
 
 dummy_fun <- function(i) {
-  res <- run_rank_regression_algorithms(n=1000, m=1)
+  res <- run_rank_regression_algorithms(n=10, m=1, max_iter=2, batch_size=3)
   return(res)
 }
 
@@ -203,13 +203,16 @@ dummy_fun <- function(i) {
 
 numCores <- detectCores() - 1
 system.time(
-  results <- mclapply(c(seq(1, 100)), dummy_fun, mc.cores = numCores)
+  results <- mclapply(c(seq(1, 3)), dummy_fun, mc.cores = numCores)
 )
+
+results
 print("finished algorithms")
 
 parse_result_and_save <- function(results) {
   betas <- results[[1]]$betas
-
+  n <- results[[1]]$n
+  m <- results[[1]]$m
   fixed_betas <- matrix(0, length(results), length(betas))
   exp_betas <- matrix(0, length(results), length(betas))
 
@@ -219,14 +222,24 @@ parse_result_and_save <- function(results) {
   }
   
   res <- list("betas"=betas, "fixed_betas"=fixed_betas, "exp_betas"=exp_betas,
-              "num_datasets"=nrow(fixed_betas), "num_betas"=length(betas))
+              "num_datasets"=nrow(fixed_betas), "num_betas"=length(betas), 
+              "n"=n, "m"=m)
   json_data <- toJSON(res)
-  write(json_data, "../res/all_betas")
+  
+  # file_name <- "../res/all_betas_"
+  file_name <- "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_"
+  file_name <- paste(file_name, n, sep='')
+  file_name <- paste(file_name, "_", sep='')
+  file_name <- paste(file_name, m, sep='')
+  file_name <- paste(file_name, "_", sep='')
+  file_name <- paste(file_name, nrow(fixed_betas), sep='')
+  file_name <- paste(file_name, "_", sep='')
+  file_name <- paste(file_name, length(betas), sep='')
+  
+  write(json_data, file_name)
   
   return(res)
 }
-
-results
 
 parse_result_and_save(results)
 
@@ -234,24 +247,32 @@ parse_result_and_save(results)
 
 
 # for local run
-# ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas")
+# library(ggplot2)
+# ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_10_1_3_13")
 # ress
 # 
 # exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
 # fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
 # betas <- ress$betas
-# # 
+# #
 # # all.equal(exp_betas, res$exp_betas)
 # # all.equal(fixed_betas, res$fixed_betas)
 # 
-# save_plots <- function(estimated_betas, gt_betas, alg_name,
+# save_plots <- function(estimated_betas, gt_betas, alg_name, num_betas_to_plot=100,
 #                        file_n='/Users/grigorkeropyan/pnl_gaussian/res/'){
-#   number_of_datasets <- nrow(estimated_betas)
-#   stacked_vals <- stack(as.data.frame(estimated_betas))
+#   if(num_betas_to_plot > length(gt_betas)) {
+#     num_betas_to_plot <- length(gt_betas)
+#   }
+#   estimated_betas_cut <- estimated_betas[, 1:num_betas_to_plot]
+#   gt_betas <- gt_betas[1:num_betas_to_plot]
+#   number_of_datasets <- nrow(estimated_betas_cut)
+#   stacked_vals <- stack(as.data.frame(estimated_betas_cut))
 # 
 #   title_name <- paste(alg_name, 'rank regression for')
 #   title_name <- paste(title_name, number_of_datasets)
 #   title_name <- paste(title_name, "datasets")
+#   title_name <- paste(title_name, num_betas_to_plot)
+#   title_name <- paste(title_name, "betas")
 #   pl <- ggplot() + geom_boxplot(aes(x=stacked_vals$ind, y=stacked_vals$values, colour='estimated betas')) +
 #     geom_point(aes(x=unique(stacked_vals$ind), y=gt_betas, colour='ground truth betas')) +
 #     labs(title=title_name, x="",y="betas") +
@@ -265,17 +286,16 @@ parse_result_and_save(results)
 #     # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
 #     theme(legend.position='top', plot.title = element_text(hjust = 0.5))
 #   file_name <- paste(file_n, alg_name, sep='')
-#   file_name <- paste(file_name, 'reg_box_plots.png', sep='')
+#   file_name <- paste(file_name, num_betas_to_plot, sep='')
+#   file_name <- paste(file_name, "_betas", sep='')
+#   file_name <- paste(file_name, '_reg_box_plots.png', sep='')
 #   ggsave(filename = file_name, plot = pl)
 # 
 #   return(pl)
 # }
 # 
-# library(ggplot2)
-# save_plots(fixed_betas, betas, 'fixed_point')
-# save_plots(exp_betas, betas, 'expected_rank')
-
-
+# save_plots(fixed_betas, betas, num_betas_to_plot = 6, 'fixed_point')
+# save_plots(exp_betas, betas, num_betas_to_plot = 6, 'expected_rank')
 
 
 
