@@ -223,7 +223,7 @@ parse_result_and_save <- function(results) {
   res <- list("betas"=betas, "fixed_betas"=fixed_betas, "exp_betas"=exp_betas,
               "num_datasets"=nrow(fixed_betas), "num_betas"=length(betas))
   json_data <- toJSON(res)
-  write(json_data, "res/all_betas")
+  write(json_data, "../res/all_betas")
   
   return(res)
 }
@@ -236,46 +236,46 @@ parse_result_and_save(results)
 
 
 # for local run
-ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas")
-ress
-
-exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
-fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
-betas <- ress$betas
+# ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas")
+# ress
 # 
-# all.equal(exp_betas, res$exp_betas)
-# all.equal(fixed_betas, res$fixed_betas)
-
-save_plots <- function(estimated_betas, gt_betas, alg_name,
-                       file_n='/Users/grigorkeropyan/pnl_gaussian/'){
-  number_of_datasets <- nrow(estimated_betas)
-  stacked_vals <- stack(as.data.frame(estimated_betas))
-
-  title_name <- paste(alg_name, 'rank regression for')
-  title_name <- paste(title_name, number_of_datasets)
-  title_name <- paste(title_name, "datasets")
-  pl <- ggplot() + geom_boxplot(aes(x=stacked_vals$ind, y=stacked_vals$values, colour='estimated betas')) +
-    geom_point(aes(x=unique(stacked_vals$ind), y=gt_betas, colour='ground truth betas')) +
-    labs(title=title_name, x="",y="betas") +
-    scale_color_manual(name='',
-                       breaks=c('estimated betas', 'ground truth betas'),
-                       values=c('black', 'red')) +
-    guides(colour = guide_legend(override.aes = list(
-      linetype = c("solid", "blank"),
-      color = c("black","red")
-    ))) +
-    # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
-    theme(legend.position='top', plot.title = element_text(hjust = 0.5))
-  file_name <- paste(file_n, alg_name, sep='')
-  file_name <- paste(file_name, 'reg_box_plots.png', sep='')
-  ggsave(filename = file_name, plot = pl)
-
-  return(pl)
-}
-
-library(ggplot2)
-save_plots(fixed_betas, betas, 'fixed_point')
-save_plots(exp_betas, betas, 'expected_rank')
+# exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
+# fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
+# betas <- ress$betas
+# # 
+# # all.equal(exp_betas, res$exp_betas)
+# # all.equal(fixed_betas, res$fixed_betas)
+# 
+# save_plots <- function(estimated_betas, gt_betas, alg_name,
+#                        file_n='/Users/grigorkeropyan/pnl_gaussian/res/'){
+#   number_of_datasets <- nrow(estimated_betas)
+#   stacked_vals <- stack(as.data.frame(estimated_betas))
+# 
+#   title_name <- paste(alg_name, 'rank regression for')
+#   title_name <- paste(title_name, number_of_datasets)
+#   title_name <- paste(title_name, "datasets")
+#   pl <- ggplot() + geom_boxplot(aes(x=stacked_vals$ind, y=stacked_vals$values, colour='estimated betas')) +
+#     geom_point(aes(x=unique(stacked_vals$ind), y=gt_betas, colour='ground truth betas')) +
+#     labs(title=title_name, x="",y="betas") +
+#     scale_color_manual(name='',
+#                        breaks=c('estimated betas', 'ground truth betas'),
+#                        values=c('black', 'red')) +
+#     guides(colour = guide_legend(override.aes = list(
+#       linetype = c("solid", "blank"),
+#       color = c("black","red")
+#     ))) +
+#     # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
+#     theme(legend.position='top', plot.title = element_text(hjust = 0.5))
+#   file_name <- paste(file_n, alg_name, sep='')
+#   file_name <- paste(file_name, 'reg_box_plots.png', sep='')
+#   ggsave(filename = file_name, plot = pl)
+# 
+#   return(pl)
+# }
+# 
+# library(ggplot2)
+# save_plots(fixed_betas, betas, 'fixed_point')
+# save_plots(exp_betas, betas, 'expected_rank')
 
 
 
