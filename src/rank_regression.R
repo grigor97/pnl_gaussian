@@ -128,7 +128,7 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
   return(coefs)
 }
 
-#FIXME check the algorithm
+#FIXME check the algorithm, added l_1 regularization
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   G_j_beta <- function(j, beta, X) {
     val <- 0
@@ -143,6 +143,8 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
     for(j in 1:nrow(X)) {
       val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
     }
+    
+    val + sum(abs(beta))
     
     return (val)
   }
@@ -194,7 +196,7 @@ run_rank_regression_algorithms <- function(n, m, max_iter, batch_size){
 }
 
 dummy_fun <- function(i) {
-  res <- run_rank_regression_algorithms(n=10, m=1, max_iter=2, batch_size=3)
+  res <- run_rank_regression_algorithms(n=5000, m=1, max_iter=100, batch_size=64)
   return(res)
 }
 
@@ -203,7 +205,7 @@ dummy_fun <- function(i) {
 
 numCores <- detectCores() - 1
 system.time(
-  results <- mclapply(c(seq(1, 3)), dummy_fun, mc.cores = numCores)
+  results <- mclapply(c(seq(1, 100)), dummy_fun, mc.cores = numCores)
 )
 
 results
@@ -226,8 +228,8 @@ parse_result_and_save <- function(results) {
               "n"=n, "m"=m)
   json_data <- toJSON(res)
   
-  # file_name <- "../res/all_betas_"
-  file_name <- "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_"
+  file_name <- "../res/all_betas_"
+  # file_name <- "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_"
   file_name <- paste(file_name, n, sep='')
   file_name <- paste(file_name, "_", sep='')
   file_name <- paste(file_name, m, sep='')
@@ -248,7 +250,7 @@ parse_result_and_save(results)
 
 # for local run
 # library(ggplot2)
-# ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_10_1_3_13")
+# ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas")
 # ress
 # 
 # exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
@@ -294,8 +296,9 @@ parse_result_and_save(results)
 #   return(pl)
 # }
 # 
-# save_plots(fixed_betas, betas, num_betas_to_plot = 6, 'fixed_point')
-# save_plots(exp_betas, betas, num_betas_to_plot = 6, 'expected_rank')
+# save_plots(exp_betas, betas, num_betas_to_plot = 5, 'expected_rank')
+# save_plots(fixed_betas, betas, num_betas_to_plot = 5, 'fixed_point')
+
 
 
 
