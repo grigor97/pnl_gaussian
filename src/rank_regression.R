@@ -128,7 +128,7 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
   return(coefs)
 }
 
-#FIXME check the algorithm, added l_1 regularization
+#FIXME check the algorithm, added l_2 regularization
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   G_j_beta <- function(j, beta, X) {
     val <- 0
@@ -144,7 +144,7 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
       val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
     }
     
-    val + sum(abs(beta))
+    val <- val + sum(beta**2)
     
     return (val)
   }
@@ -162,6 +162,13 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   
   return(est_beta$par)
 }
+
+# data <- simulate_rank_regression_data(200, 1)
+# data$beta
+# X <- data$X
+# Y <- data$Y
+# res <- find_f1_coefs_expected_rank_algorithm(Y, X)
+# res
 
 run_rank_regression_algorithms <- function(n, m, max_iter, batch_size){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
