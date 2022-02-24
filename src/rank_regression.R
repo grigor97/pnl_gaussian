@@ -1,5 +1,5 @@
 library(parallel)
-
+library(rjson)
 # library(ggplot2)
 
 set.seed(12)
@@ -202,6 +202,7 @@ dummy_fun <- function(i) {
 
 print("finished algorithms")
 
+res
 # res <- run_rank_regression_algorithms(n=100, m=1)
 # res
 
@@ -221,13 +222,26 @@ parse_result_and_save <- function(results) {
     exp_betas[i, ] <- results[[i]]$expected_est_betas
   }
   
-  res <- list("betas"=betas, "fixed_betas"=fixed_betas, "exp_betas"=exp_betas)
-  saveRDS(res, "res/all_betas")
+  res <- list("betas"=betas, "fixed_betas"=fixed_betas, "exp_betas"=exp_betas,
+              "num_datasets"=nrow(fixed_betas), "num_betas"=length(betas))
+  json_data <- toJSON(res)
+  write(json_data, "res/all_betas")
   
   return(res)
 }
 
+results
+
 parse_result_and_save(results)
+ress <- fromJSON(file = "res/all_betas")
+ress
+
+# exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
+# fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
+
+# 
+# all.equal(exp_betas, res$exp_betas)
+# all.equal(fixed_betas, res$fixed_betas)
 
 # save_plots <- function(estimated_betas, gt_betas, alg_name, 
 #                        file_n='/Users/grigorkeropyan/pnl_gaussian/'){
