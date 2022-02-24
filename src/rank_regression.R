@@ -200,9 +200,6 @@ dummy_fun <- function(i) {
   return(res)
 }
 
-print("finished algorithms")
-
-res
 # res <- run_rank_regression_algorithms(n=100, m=1)
 # res
 
@@ -210,6 +207,7 @@ numCores <- detectCores() - 1
 system.time(
   results <- mclapply(c(seq(1, 7)), dummy_fun, mc.cores = numCores)
 )
+print("finished algorithms")
 
 parse_result_and_save <- function(results) {
   betas <- results[[1]]$betas
