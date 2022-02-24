@@ -1,7 +1,6 @@
-library(matlib)
 library(parallel)
 
-library(ggplot2)
+# library(ggplot2)
 
 set.seed(12)
 
@@ -82,8 +81,8 @@ inverse_cdf_z<- inverse(cdf_z, -1000, 1000)
 #' @export
 #'
 #' @examples
-find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, tol=1e-9, 
-                                                 max_iter=100) {
+find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, 
+                                                 max_iter=100, tol=1e-9) {
   if (!is.matrix(X)) {
     X <- as.matrix(X)
   }
@@ -162,160 +161,65 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   return(est_beta$par)
 }
 
-# FIXME works only for small n(<40), otherwise u_beta vanishes
-find_f1_coefs_conditional_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100, 
-                                                       tol=1e-9) {
-  n <- nrow(X)
-  m <- ncol(X)
-  ranks_Y <- rank(Y)
-  # centering a matrix column wise
-  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
-  
-  inv_XTX <- NaN
-  if (m == 1) {
-    inv_XTX <- 1/(t(X) %*% X)
-  } else {
-    inv_XTX <- inv(t(X) %*% X)
-  }
-  M_mult <- inv_XTX %*% t(X)
-  
-  B_hat <- matrix(0, nrow=m, ncol=M)
-  rss_hats <- c()
-
-  for(i in 1:M) {
-    # Generate standard normal sample, standardize by sample mean and standard 
-    # deviation, order and put into the same rank order as the original sample
-    max_val <- 1000
-    while(T) {
-      z <- rnorm(n)
-      z_hat <- (z - mean(z))/sd(z)
-      z <- sort(z_hat)
-      z_hat <- z_hat[ranks_Y]
-    
-      # finding b hat and ssf hat
-      b_hat <- M_mult %*% z_hat
-      ssf_hat <- sum((X %*% b_hat)**2)
-      rss_hat <- n-1-ssf_hat
-      print(rss_hat)
-      if(rss_hat > max_val) {
-        next
-      }
-     
-      B_hat[, i] <- b_hat
-      rss_hats <- c(rss_hats, rss_hat)
-      break
-    }
-  }
-  
-  t <- ((n-3)/rss_hats)**0.5
-  TT <- matrix(t, m, M, byrow = T)
-  v <- rss_hats**(-(n-1)/2)
-  
-  coefs <- runif(m, min=-10, max=10)
-  print("rss_hats")
-  print(rss_hats)
-  print("B_hat")
-  print(B_hat)
-  print("TT")
-  print(TT)
-  print("v ")
-  print(v)
-  for(i in 1:max_iter) {
-    U_beta <- X %*% (TT*B_hat - coefs)
-    u_beta <- colSums(U_beta**2)
-    
-    u_beta <- exp(-u_beta/2)
-    print("u_beta")
-    print(u_beta)
-    w <- v * u_beta
-    coefs_next <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B_hat)
-    coefs_next <- rowSums(coefs_next)
-    
-    print("coefs next")
-    print(coefs_next)
-    err <- (sum(coefs_next - coefs)**2)**0.5
-    coefs <- coefs_next
-    
-    print(paste("err ", err))
-    if(err < tol) {
-      print("converged ...")
-      break
-    }
-  }
-  
-  return (coefs)
-}
-# 
-# data <- simulate_rank_regression_data(30, 2)
-# coefs <- find_f1_coefs_conditional_monte_carlo_algorithm(data$Y, data$X, M = 100, max_iter = 10)
-# 
-# coefs
-# data$beta
 
 
-#' Title run rank regression algorithms 
-#' for specific arguments and number of datasets
-#'
-#' @param n number of samples in each dataset
-#' @param m number of coefficients
-#' @param number_of_datasets number of datasets
-#'
-#' @return ground truth betas and estimated betas
-#' @export
-#'
-#' @examples
-#FIXME run parallel
-run_rank_regression_algorithms <- function(n, m, number_of_datasets){
+run_rank_regression_algorithms <- function(n=1000, m=1){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  betas <- c(0.01, 0.1)#, 0.3, 0.5) #, 0.7, 0.9, 1, 10, 30, 100)
+  betas <- c(0.01, 0.1, 1)#, 0.3, 0.5) #, 0.7, 0.9, 1, 10, 30, 100)
   
-  rank_reg_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
-  expected_rank_est_betas <- matrix(0, nrow=number_of_datasets, ncol=length(betas))
-  for(i in 1:number_of_datasets) {
-    print(paste("dataset ", i))
-    X <- matrix(rnorm(n*m), n, m)
-    for (j in 1:length(betas)) {
-      print(paste("beta ", j))
-      beta <- betas[j]
-      noise <- rnorm(n)
-      Y <- X %*% beta + noise
-      Y <- exponent(Y, 1/3) + 4.7
-      
-      # ranks_Y <- rank(Y)
-      # ecdf_Y <- ranks_Y/(n+1)
-      # 
-      pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size = 4,
-                                                        max_iter = 3, tol=1e-9)
-      pred_beta <- find_f1_coefs_expected_rank_algorithm(Y, X)
-      
-      rank_reg_est_betas[i, j] <- pred_beta
-      expected_rank_est_betas[i, j] <- pred_beta
-    }
+  fixed_est_betas <- matrix(0, nrow=m, ncol=length(betas))
+  expected_est_betas <- matrix(0, nrow=m, ncol=length(betas))
+  
+  # generate data
+  X <- matrix(rnorm(n*m), n, m)
+  
+  for (j in 1:length(betas)) {
+    print(paste("beta ", j))
+    beta <- betas[j]
+    
+    # generate noise and corresponding y
+    noise <- rnorm(n)
+    Y <- X %*% beta + noise
+    Y <- exponent(Y, 1/3) + 4.7
+    
+    fixed_pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size=4,
+                                                      max_iter=10, tol=1e-9)
+    
+    expected_pred_beta <- find_f1_coefs_expected_rank_algorithm(Y, X)
+    
+    fixed_est_betas[ , j] <- fixed_pred_beta
+    expected_est_betas[ , j] <- expected_pred_beta
   }
-  return (list("rank_reg_est_betas"=rank_reg_est_betas, 
-               "expected_rank_est_betas"=expected_rank_est_betas,
+  return (list("fixed_est_betas"=fixed_est_betas, 
+               "expected_est_betas"=expected_est_betas,
                "betas"=betas))
 }
 
+dummy_fun <- function(i) {
+  res <- run_rank_regression_algorithms(n=100, m=1)
+  return(res)
+}
 
-#' Title run rank regression algorithms and 
-#' save a boxplots of the estimated betas
-#'
-#' @param file_n file name where the plots should be saved
-#'
-#' @return ground truth betas and estimated betas
-#' @export
-#'
-#' @examples
-# save_plots <- function(result, file_n='/Users/grigorkeropyan/pnl_gaussian/plots/'){
-#   rank_reg_est_betas <- result$rank_reg_est_betas
-#   betas <- result$betas
+# res <- run_rank_regression_algorithms(n=100, m=1)
+# res
+
+numCores <- detectCores() - 1
+system.time(
+  results <- mclapply(c(seq(1, 14)), dummy_fun, mc.cores = numCores)
+)
+
+saveRDS(results, "res")
+
+# save_plots <- function(estimated_betas, gt_betas, alg_name, 
+#                        file_n='/Users/grigorkeropyan/pnl_gaussian/'){
+#   number_of_datasets <- nrow(estimated_betas)
+#   stacked_vals <- stack(as.data.frame(estimated_betas))
 #   
-#   dat <- stack(as.data.frame(rank_reg_est_betas))
-#   title_name <- paste("rank regression for", number_of_datasets)
+#   title_name <- paste(alg_name, 'rank regression for')
+#   title_name <- paste(title_name, number_of_datasets)
 #   title_name <- paste(title_name, "datasets")
-#   pl <- ggplot() + geom_boxplot(aes(x=dat$ind, y=dat$values, colour='estimated betas')) + 
-#     geom_point(aes(x=unique(dat$ind), y=betas, colour='ground truth betas')) + 
+#   pl <- ggplot() + geom_boxplot(aes(x=stacked_vals$ind, y=stacked_vals$values, colour='estimated betas')) + 
+#     geom_point(aes(x=unique(stacked_vals$ind), y=gt_betas, colour='ground truth betas')) + 
 #     labs(title=title_name, x="",y="betas") +
 #     scale_color_manual(name='', 
 #                        breaks=c('estimated betas', 'ground truth betas'),
@@ -326,56 +230,35 @@ run_rank_regression_algorithms <- function(n, m, number_of_datasets){
 #     ))) +
 #     # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
 #     theme(legend.position='top', plot.title = element_text(hjust = 0.5))
-#   
-#   # file_name <- paste(file_n, 'rank_reg_alg/', sep='')
-#   file_name <- paste(file_n, 'rank_reg_box_plots.png', sep='')
+#   file_name <- paste(file_n, alg_name, sep='')
+#   file_name <- paste(file_name, 'reg_box_plots.png', sep='')
 #   ggsave(filename = file_name, plot = pl)
 #   
-#   plot(pl)
-#   
-#   return (res)
+#   return(pl) 
 # }
 
 
-# res <- run_algorithms_and_save_plots()
-# res
 
-res <- run_rank_regression_algorithms(n=100, m=1, number_of_datasets=3)
-res$expected_rank_est_betas
-saveRDS(res, "result")
-
-exp_rank <- stack(as.data.frame(res$expected_rank_est_betas))
-pl <- ggplot() + geom_boxplot(aes(x=exp_rank$ind, y=exp_rank$values, colour='estimated betas')) + 
-  geom_point(aes(x=unique(exp_rank$ind), y=res$betas, colour='ground truth betas')) + 
-  labs(title="expected rank regression for 100 datasets", x="",y="betas") +
-  scale_color_manual(name='', 
-                     breaks=c('estimated betas', 'ground truth betas'),
-                     values=c('black', 'red')) +
-  guides(colour = guide_legend(override.aes = list(
-    linetype = c("solid", "blank"),
-    color = c("black","red")
-  ))) +
-  # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
-  theme(legend.position='top', plot.title = element_text(hjust = 0.5))
-#pl
-ggsave(filename = 'expected_rank_reg_box_plots.png', plot = pl)
-
-rank_reg <- stack(as.data.frame(res$rank_reg_est_betas))
-pl <- ggplot() + geom_boxplot(aes(x=rank_reg$ind, y=rank_reg$values, colour='estimated betas')) + 
-  geom_point(aes(x=unique(rank_reg$ind), y=res$betas, colour='ground truth betas')) + 
-  labs(title="rank regression for 100 datasets", x="",y="betas") +
-  scale_color_manual(name='', 
-                     breaks=c('estimated betas', 'ground truth betas'),
-                     values=c('black', 'red')) +
-  guides(colour = guide_legend(override.aes = list(
-    linetype = c("solid", "blank"),
-    color = c("black","red")
-  ))) +
-  # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
-  theme(legend.position='top', plot.title = element_text(hjust = 0.5))
-#pl
-ggsave(filename = 'rank_reg_box_plots.png', plot = pl)
-
+# parse_res_and_save <- function(results) {
+#   betas <- results[[1]]$betas
+#   
+#   fixed_betas <- matrix(0, length(results), length(betas))
+#   exp_betas <- matrix(0, length(results), length(betas))
+#   
+#   for(i in 1:length(results)) {
+#     fixed_betas[i, ] <- results[[i]]$fixed_est_betas
+#     exp_betas[i, ] <- results[[i]]$expected_est_betas
+#   }
+#   
+#   save_plots(fixed_betas, betas, 'fixed_point')
+#   save_plots(exp_betas, betas, 'expected_rank')
+#   
+#   saveRDS(results, "/Users/grigorkeropyan/pnl_gaussian/result")
+# }
+# 
+# parse_res_and_save(results)
+# 
+# results
 
 # res$betas
 # means_est_betas <- colMeans(res$rank_reg_est_betas)
@@ -724,6 +607,96 @@ ggsave(filename = 'rank_reg_box_plots.png', plot = pl)
 # 
 #   return(coefs)
 # }
-f <- function(x) pbeta(x, shape1=2, shape2=3)
-f.inv <- inverse(f,lower=0,upper=1)
-f.inv(.2)
+# f <- function(x) pbeta(x, shape1=2, shape2=3)
+# f.inv <- inverse(f,lower=0,upper=1)
+# f.inv(.2)
+
+# FIXME works only for small n(<40), otherwise u_beta vanishes
+# find_f1_coefs_conditional_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100, 
+#                                                             tol=1e-9) {
+#   n <- nrow(X)
+#   m <- ncol(X)
+#   ranks_Y <- rank(Y)
+#   # centering a matrix column wise
+#   X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+#   
+#   inv_XTX <- NaN
+#   if (m == 1) {
+#     inv_XTX <- 1/(t(X) %*% X)
+#   } else {
+#     inv_XTX <- inv(t(X) %*% X)
+#   }
+#   M_mult <- inv_XTX %*% t(X)
+#   
+#   B_hat <- matrix(0, nrow=m, ncol=M)
+#   rss_hats <- c()
+#   
+#   for(i in 1:M) {
+#     # Generate standard normal sample, standardize by sample mean and standard 
+#     # deviation, order and put into the same rank order as the original sample
+#     max_val <- 1000
+#     while(T) {
+#       z <- rnorm(n)
+#       z_hat <- (z - mean(z))/sd(z)
+#       z <- sort(z_hat)
+#       z_hat <- z_hat[ranks_Y]
+#       
+#       # finding b hat and ssf hat
+#       b_hat <- M_mult %*% z_hat
+#       ssf_hat <- sum((X %*% b_hat)**2)
+#       rss_hat <- n-1-ssf_hat
+#       print(rss_hat)
+#       if(rss_hat > max_val) {
+#         next
+#       }
+#       
+#       B_hat[, i] <- b_hat
+#       rss_hats <- c(rss_hats, rss_hat)
+#       break
+#     }
+#   }
+#   
+#   t <- ((n-3)/rss_hats)**0.5
+#   TT <- matrix(t, m, M, byrow = T)
+#   v <- rss_hats**(-(n-1)/2)
+#   
+#   coefs <- runif(m, min=-10, max=10)
+#   print("rss_hats")
+#   print(rss_hats)
+#   print("B_hat")
+#   print(B_hat)
+#   print("TT")
+#   print(TT)
+#   print("v ")
+#   print(v)
+#   for(i in 1:max_iter) {
+#     U_beta <- X %*% (TT*B_hat - coefs)
+#     u_beta <- colSums(U_beta**2)
+#     
+#     u_beta <- exp(-u_beta/2)
+#     print("u_beta")
+#     print(u_beta)
+#     w <- v * u_beta
+#     coefs_next <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B_hat)
+#     coefs_next <- rowSums(coefs_next)
+#     
+#     print("coefs next")
+#     print(coefs_next)
+#     err <- (sum(coefs_next - coefs)**2)**0.5
+#     coefs <- coefs_next
+#     
+#     print(paste("err ", err))
+#     if(err < tol) {
+#       print("converged ...")
+#       break
+#     }
+#   }
+#   
+#   return (coefs)
+# }
+# 
+# data <- simulate_rank_regression_data(30, 2)
+# coefs <- find_f1_coefs_conditional_monte_carlo_algorithm(data$Y, data$X, M = 100, max_iter = 10)
+# 
+# coefs
+# data$beta
