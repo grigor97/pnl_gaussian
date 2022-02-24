@@ -200,15 +200,34 @@ dummy_fun <- function(i) {
   return(res)
 }
 
+print("finished algorithms")
+
 # res <- run_rank_regression_algorithms(n=100, m=1)
 # res
 
 numCores <- detectCores() - 1
 system.time(
-  results <- mclapply(c(seq(1, 14)), dummy_fun, mc.cores = numCores)
+  results <- mclapply(c(seq(1, 7)), dummy_fun, mc.cores = numCores)
 )
 
-saveRDS(results, "res")
+parse_result_and_save <- function(results) {
+  betas <- results[[1]]$betas
+
+  fixed_betas <- matrix(0, length(results), length(betas))
+  exp_betas <- matrix(0, length(results), length(betas))
+
+  for(i in 1:length(results)) {
+    fixed_betas[i, ] <- results[[i]]$fixed_est_betas
+    exp_betas[i, ] <- results[[i]]$expected_est_betas
+  }
+  
+  res <- list("betas"=betas, "fixed_betas"=fixed_betas, "exp_betas"=exp_betas)
+  saveRDS(res, "res/all_betas")
+  
+  return(res)
+}
+
+parse_result_and_save(results)
 
 # save_plots <- function(estimated_betas, gt_betas, alg_name, 
 #                        file_n='/Users/grigorkeropyan/pnl_gaussian/'){
