@@ -161,11 +161,9 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, max_iter=100) {
   return(est_beta$par)
 }
 
-
-
-run_rank_regression_algorithms <- function(n=1000, m=1){
+run_rank_regression_algorithms <- function(n, m, max_iter=100, batch_size=64){
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  betas <- c(0.01, 0.1, 1)#, 0.3, 0.5) #, 0.7, 0.9, 1, 10, 30, 100)
+  betas <- c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 10, 30, 50, 70, 100, 1000)
   
   fixed_est_betas <- matrix(0, nrow=m, ncol=length(betas))
   expected_est_betas <- matrix(0, nrow=m, ncol=length(betas))
@@ -181,10 +179,10 @@ run_rank_regression_algorithms <- function(n=1000, m=1){
     noise <- rnorm(n)
     Y <- X %*% beta + noise
     Y <- exponent(Y, 1/3) + 4.7
-    
-    fixed_pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size=4,
-                                                      max_iter=10, tol=1e-9)
-    
+    print("fixed alg started")
+    fixed_pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size=batch_size,
+                                                      max_iter=max_iter, tol=1e-9)
+    print("exp alg started")
     expected_pred_beta <- find_f1_coefs_expected_rank_algorithm(Y, X)
     
     fixed_est_betas[ , j] <- fixed_pred_beta
@@ -196,7 +194,7 @@ run_rank_regression_algorithms <- function(n=1000, m=1){
 }
 
 dummy_fun <- function(i) {
-  res <- run_rank_regression_algorithms(n=100, m=1)
+  res <- run_rank_regression_algorithms(n=1000, m=1)
   return(res)
 }
 
@@ -205,7 +203,7 @@ dummy_fun <- function(i) {
 
 numCores <- detectCores() - 1
 system.time(
-  results <- mclapply(c(seq(1, 7)), dummy_fun, mc.cores = numCores)
+  results <- mclapply(c(seq(1, 100)), dummy_fun, mc.cores = numCores)
 )
 print("finished algorithms")
 
