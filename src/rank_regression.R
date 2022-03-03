@@ -32,16 +32,26 @@ cdf_z <- function(y, subtract_values) {
 
 inverse <- function(f, lower, upper){
   function(y, arg){
+    if(f(lower, arg) - y > 0) {
+      return(lower)
+    }
+    if (f(upper, arg) - y < 0) {
+      return(upper)
+    }
     uniroot(function(x){f(x, arg) - y}, lower = lower, upper = upper, tol=1e-3,)[1]$root
   }
 }
 
-inverse_cdf_z<- inverse(cdf_z, -1000, 1000)
+inverse_cdf_z <- inverse(cdf_z, -10000000, 10000000)
 
 find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, 
                                                  max_iter=100, tol=1e-9) {
+  print("starting fixed point algorithm")
   if (!is.matrix(X)) {
     X <- as.matrix(X)
+  }
+  if (!is.matrix(Y)) {
+    Y <- as.matrix(Y)
   }
   
   m <- ncol(X)
@@ -64,7 +74,7 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
     ranks_Y <- rank(batch_Y)
     empirical_cdf_Y <- ranks_Y/(batch_size+1)
     
-    # print(paste("iter  ", iter))
+    # print(paste("iter for fixed point alg  ", iter))
     sub_vals <- batch_X %*% coefs
     yhat <- as.vector(sapply(empirical_cdf_Y, inverse_cdf_z, arg=sub_vals))
     
@@ -86,6 +96,7 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
 }
 
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
+  print("starting expected rank algorithm")
   G_j_beta <- function(j, beta, X) {
     val <- 0
     for(i in 1:nrow(X)) {
@@ -107,6 +118,9 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
   
   if (!is.matrix(X)) {
     X <- as.matrix(X)
+  }
+  if (!is.matrix(Y)) {
+    Y <- as.matrix(Y)
   }
   
   m <- ncol(X)

@@ -33,23 +33,6 @@ run_rank_regression_algorithms <- function(n, m, max_iter, batch_size, lamb){
                "betas"=betas, "n"=n, "m"=m, "lamb"=lamb))
 }
 
-dummy_fun <- function(i) {
-  res <- run_rank_regression_algorithms(n=20, m=1, max_iter=3, batch_size=4, lamb=10)
-  return(res)
-}
-
-# res <- run_rank_regression_algorithms(n=100, m=1)
-# res
-
-numCores <- detectCores() - 1
-print(paste("num coress  --- ", numCores))
-system.time(
-  results <- mclapply(c(seq(1, 4)), dummy_fun, mc.cores = numCores)
-)
-
-results
-print("finished algorithms")
-
 parse_result_and_save <- function(results) {
   betas <- results[[1]]$betas
   n <- results[[1]]$n
@@ -83,5 +66,21 @@ parse_result_and_save <- function(results) {
   
   return(res)
 }
+
+dummy_fun <- function(i) {
+  res <- run_rank_regression_algorithms(n=20, m=1, max_iter=3, batch_size=4, lamb=10)
+  return(res)
+}
+
+numCores <- detectCores() - 1
+print(paste("num coress  --- ", numCores))
+
+system.time(
+  results <- mclapply(c(seq(1, 4)), dummy_fun, mc.cores = numCores)
+)
+
+results
+print("finished algorithms")
+
 
 parse_result_and_save(results)

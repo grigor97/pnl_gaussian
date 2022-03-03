@@ -2,14 +2,7 @@
 library(ggplot2)
 library(rjson)
 
-ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_l2_lamb1_1000_1_100_13")
-ress
-
-exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
-fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
-betas <- ress$betas
-
-save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, from=1, to=100,
+save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, lamb, from=1, to=100,
                        file_n='/Users/grigorkeropyan/pnl_gaussian/plots/'){
   if(to > length(gt_betas)) {
     to <- length(gt_betas)
@@ -34,7 +27,11 @@ save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, from=1, to=100
     ))) +
     # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
     theme(legend.position='top', plot.title = element_text(hjust = 0.5))
+  
   file_name <- paste(file_n, alg_name, sep='')
+  file_name <- paste(file_name, "lamb_", sep='')
+  file_name <- paste(file_name, lamb, sep='')
+  file_name <- paste(file_name, "_", sep='')
   file_name <- paste(file_name, n, sep='')
   file_name <- paste(file_name, "_", sep='')
   file_name <- paste(file_name, m, sep='')
@@ -51,7 +48,14 @@ save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, from=1, to=100
   return(pl)
 }
 
-save_plots(exp_betas, betas, alg_name='exp_rank_lamb_1888_', from=1, to = 7, 
+ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_l2_lamb_10_500_1_100_13")
+ress
+
+exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
+fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
+betas <- ress$betas
+
+save_plots(exp_betas, betas, alg_name='exp_rank_', ress$lamb, from=1, to = 7, 
            n=ress$n, m=ress$m)
-save_plots(fixed_betas, betas, alg_name='fix_point_lamb_1888_', from=1, to = 7,
+save_plots(fixed_betas, betas, alg_name='fix_point_', ress$lamb, from=1, to = 7,
            n=ress$n, m=ress$m)
