@@ -17,3 +17,4 @@ for(i in 1:100) {
     correct_num <- correct_num + 1
   }
 }
+correct_num

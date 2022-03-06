@@ -48,14 +48,14 @@ save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, lamb, from=1, 
   return(pl)
 }
 
-ress <- fromJSON(file = "/Users/grigorkeropyan/pnl_gaussian/res/all_betas_l2_lamb_10_500_1_100_13")
+ress <- fromJSON(file = "../res/all_betas_l2_lamb_1_3000_1_100_13")
 ress
 
 exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
 fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
 betas <- ress$betas
 
-save_plots(exp_betas, betas, alg_name='exp_rank_', ress$lamb, from=1, to = 7, 
+save_plots(exp_betas, betas, alg_name='exp_rank_', ress$lamb, from=7, to = 13, 
            n=ress$n, m=ress$m)
-save_plots(fixed_betas, betas, alg_name='fix_point_', ress$lamb, from=1, to = 7,
+save_plots(fixed_betas, betas, alg_name='fix_point_', ress$lamb, from=1, to = 13,
            n=ress$n, m=ress$m)
