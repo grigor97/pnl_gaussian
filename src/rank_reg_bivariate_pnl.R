@@ -49,7 +49,7 @@ find_estimates <- function(Y, X, rank_alg) {
   return(res)
 }
 
-find_bivariate_direction <- function(data, f_name, rank_alg) {
+find_bivariate_direction <- function(data, rank_alg, f_name="") {
   X <- data[, 1]
   Y <- data[, 2]
   
