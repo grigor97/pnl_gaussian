@@ -1,6 +1,6 @@
 source("rank_reg_bivariate_pnl.R")
 
-run_bivariate_for_sim_data <- function(num_datasets=100, rank_alg="expected_rank") {
+run_bivariate_for_sim_data <- function(num_datasets, rank_alg) {
   results <- c()
   for(i in 1:num_datasets) {
     print(paste("iter ", i))
@@ -12,4 +12,4 @@ run_bivariate_for_sim_data <- function(num_datasets=100, rank_alg="expected_rank
   return(table(results))
 }
 
-run_bivariate_for_sim_data()
+run_bivariate_for_sim_data(100, "expected_l1_rank")

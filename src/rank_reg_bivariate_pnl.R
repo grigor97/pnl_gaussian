@@ -33,11 +33,6 @@ find_estimates <- function(Y, X, rank_alg) {
   sub_vals <- X %*% est_beta
   print("estimate f_2_inv_y")
   
-  # f_2_inv_y <- c()
-  # for(e_y in empirical_cdf_Y) {
-  #   print(e_y)
-  #   f_2_inv_y <- c(f_2_inv_y, inverse_cdf_z(e_y, arg = sub_vals))
-  # }
   f_2_inv_y <- as.vector(sapply(empirical_cdf_Y, inverse_cdf_z, arg=sub_vals))
   est_errors <- f_2_inv_y - sub_vals
   
