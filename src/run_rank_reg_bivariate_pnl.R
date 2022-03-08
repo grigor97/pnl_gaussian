@@ -1,4 +1,4 @@
-source("bivariate_pnl.R")
+source("rank_reg_bivariate_pnl.R")
 # library(foreach)
 # library(doParallel)
 
