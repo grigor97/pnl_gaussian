@@ -96,7 +96,7 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
 }
 
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
-  print("starting expected rank algorithm")
+  print("starting expected rank l2 algorithm")
   G_j_beta <- function(j, beta, X) {
     val <- 0
     for(i in 1:nrow(X)) {
@@ -134,7 +134,7 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
 }
 
 find_f1_coefs_expected_rank_l1_algorithm <- function(Y, X, lamb=10) {
-  print("starting expected rank algorithm")
+  print("starting expected rank l1 algorithm")
   G_j_beta <- function(j, beta, X) {
     val <- 0
     for(i in 1:nrow(X)) {

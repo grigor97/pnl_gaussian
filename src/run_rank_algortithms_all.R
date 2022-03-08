@@ -54,8 +54,8 @@ parse_result_and_save <- function(results) {
     exp_l1_betas[i, ] <- results[[i]]$expected_l1_est_betas
   }
   
-  res <- list("betas"=betas, #"fixed_betas"=fixed_betas, "exp_betas"=exp_betas,
-              "num_datasets"=nrow(fixed_betas), "num_betas"=length(betas), 
+  res <- list("betas"=betas, "exp_l1_betas"=exp_l1_betas, #"fixed_betas"=fixed_betas, "exp_betas"=exp_betas,
+              "num_datasets"=nrow(exp_l1_betas), "num_betas"=length(betas), 
               "n"=n, "m"=m, "lamb"=lamb)
   json_data <- toJSON(res)
   
@@ -66,7 +66,7 @@ parse_result_and_save <- function(results) {
   file_name <- paste(file_name, "_", sep='')
   file_name <- paste(file_name, m, sep='')
   file_name <- paste(file_name, "_", sep='')
-  file_name <- paste(file_name, nrow(fixed_betas), sep='')
+  file_name <- paste(file_name, nrow(exp_l1_betas), sep='')
   file_name <- paste(file_name, "_", sep='')
   file_name <- paste(file_name, length(betas), sep='')
   
@@ -76,7 +76,7 @@ parse_result_and_save <- function(results) {
 }
 
 dummy_fun <- function(i) {
-  res <- run_rank_regression_algorithms(n=10, m=1, max_iter=100, batch_size=4, lamb=10)
+  res <- run_rank_regression_algorithms(n=1000, m=1, max_iter=100, batch_size=64, lamb=10)
   return(res)
 }
 
@@ -84,7 +84,7 @@ numCores <- detectCores() - 1
 print(paste("num coress  --- ", numCores))
 
 system.time(
-  results <- mclapply(c(seq(1, 4)), dummy_fun, mc.cores = numCores)
+  results <- mclapply(c(seq(1, 100)), dummy_fun, mc.cores = numCores)
 )
 
 results
