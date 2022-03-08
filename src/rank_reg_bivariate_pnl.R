@@ -18,10 +18,13 @@ find_estimates <- function(Y, X, rank_alg) {
   est_beta <- NaN
   if(rank_alg=="expected_rank") {
     est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb = 10)
+  } else if(rank_alg=="expected_l1_rank") {
+    est_beta <- find_f1_coefs_expected_rank_l1_algorithm(Y, X, lamb = 10)
   } else if(rank_alg=="fixed_point") {
     est_beta <- find_f1_coefs_fixed_point_stochastic(Y, X)
   } else {
-    print("no such rank regression algorithm. Options are expected_rank and fixed_point")
+    print("no such rank regression algorithm. Options are expected_rank, 
+          expected_l1_rank and fixed_point")
     return()
   }
   
