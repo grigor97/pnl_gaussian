@@ -11,13 +11,13 @@ run_bivariate_for_sim_data <- function(rank_alg, lamb,
 
 algs <- c("expected_l2_rank")#, "expected_l1_rank", "fixed_point")
 lambdas <- c(0.1, 3, 10, 30, 100)
-sample_sizes <- c(100)
+sample_sizes <- c(1000)
 
 all_accs <- c()
 
 
 
-num_datasets <- 4
+num_datasets <- 100
 
 numCores <- detectCores() - 1
 print(paste("num coress  --- ", numCores))
