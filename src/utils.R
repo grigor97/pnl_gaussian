@@ -1,3 +1,5 @@
+set.seed(12)
+
 simulate_bivariate_pnl <- function(n) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   X <- matrix(rnorm(n), n, 1)
@@ -10,8 +12,6 @@ simulate_bivariate_pnl <- function(n) {
   
   return(res)
 }
-
-set.seed(12)
 
 simulate_rank_regression_data <- function(n, m) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
