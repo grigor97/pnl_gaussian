@@ -23,7 +23,8 @@ load_pairs_run_bivariate <- function(i, files) {
     dat <- dat[random_inds, ]
   }
   
-  res <- find_bivariate_direction(dat, rank_alg="expected_rank", f_name)
+  res <- find_bivariate_direction(dat, rank_alg="expected_rank", lamb = 10, 
+                                  file_name = f_name)
   
   print(res$est_direction)
   print(res$res1$dhsic_val)

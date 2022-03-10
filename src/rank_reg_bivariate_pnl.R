@@ -1,29 +1,18 @@
 source("rank_regression.R")
 library(dHSIC)
 
-simulate_bivariate_pnl <- function(n=1000) {
-  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  X <- matrix(rnorm(n), n, 1)
-  beta <- runif(1, -10, 10)
-  noise <- rnorm(n)
-  Y <- X %*% beta + noise
-  Y <- exponent(Y, 1/3) + 4.7
-  data <- cbind(X, Y)
-  res <- list("data"=data, "beta"=beta)
-  
-  return(res)
-}
-
-find_estimates <- function(Y, X, rank_alg) {
+find_estimates <- function(Y, X, rank_alg, lamb) {
   est_beta <- NaN
-  if(rank_alg=="expected_rank") {
-    est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb = 10)
+  if(rank_alg=="expected_l2_rank") {
+    est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, 
+                                                      lamb = lamb, penalty = "ell2")
   } else if(rank_alg=="expected_l1_rank") {
-    est_beta <- find_f1_coefs_expected_rank_l1_algorithm(Y, X, lamb = 10)
+    est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, 
+                                                      lamb = lamb, penalty = "ell1")
   } else if(rank_alg=="fixed_point") {
     est_beta <- find_f1_coefs_fixed_point_stochastic(Y, X)
   } else {
-    print("no such rank regression algorithm. Options are expected_rank, 
+    print("no such rank regression algorithm. Options are expected_l2_rank, 
           expected_l1_rank and fixed_point")
     return()
   }
@@ -44,12 +33,12 @@ find_estimates <- function(Y, X, rank_alg) {
   return(res)
 }
 
-find_bivariate_direction <- function(data, rank_alg, f_name="") {
+find_bivariate_direction <- function(data, rank_alg, lamb, file_name="") {
   X <- data[, 1]
   Y <- data[, 2]
   
-  res1 <- find_estimates(Y, X, rank_alg)
-  res2 <- find_estimates(X, Y, rank_alg)
+  res1 <- find_estimates(Y, X, rank_alg, lamb)
+  res2 <- find_estimates(X, Y, rank_alg, lamb)
   
   est_direction <- ""
   if(res1$dhsic_val < res2$dhsic_val) {
@@ -58,5 +47,6 @@ find_bivariate_direction <- function(data, rank_alg, f_name="") {
     est_direction <- "2 -> 1"
   }
   
-  return(list("res1"=res1, "res2"=res2, "est_direction"=est_direction, "f_name"= f_name))
+  return(list("res1"=res1, "res2"=res2, "est_direction"=est_direction, 
+              "file_name"= file_name))
 }

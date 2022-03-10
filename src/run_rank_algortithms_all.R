@@ -1,3 +1,5 @@
+library(parallel)
+library(rjson)
 source("rank_regression.R")
 
 
@@ -27,7 +29,7 @@ run_rank_regression_algorithms <- function(n, m, max_iter, batch_size, lamb){
     # expected_pred_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=lamb)
     
     print("exp_l1 alg started")
-    expected_l1_est_beta <- find_f1_coefs_expected_rank_l1_algorithm(Y, X, lamb=lamb)
+    expected_l1_est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=lamb, penalty = "ell1")
     
     # fixed_est_betas[ , j] <- fixed_pred_beta
     # expected_est_betas[ , j] <- expected_pred_beta

@@ -1,26 +1,3 @@
-library(parallel)
-library(rjson)
-
-set.seed(12)
-
-simulate_rank_regression_data <- function(n, m) {
-  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  
-  noise <- rnorm(n)
-  X <- matrix(rnorm(n*m), n, m)
-  
-  beta <- runif(n=m, min=-100, max=100)
-  # beta[1] <- 0
-  # beta[3] <- 0
-  # beta[4] <- 0
-  
-  Y <- X %*% beta + noise
-  Y <- exponent(Y, 1/3) + 4.7
-  
-  res <- list("X"=X, "Y"=Y, "beta"=beta)
-  return(res)
-}
-
 cdf_z <- function(y, subtract_values) {
   res = 0
   for(i in subtract_values) {
@@ -95,8 +72,9 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
   return(coefs)
 }
 
-find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
-  print("starting expected rank l2 algorithm")
+# possible penalties are ell1 and ell2
+find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2") {
+  print(paste("starting expected rank ", penalty))
   G_j_beta <- function(j, beta, X) {
     val <- 0
     for(i in 1:nrow(X)) {
@@ -111,7 +89,13 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
       val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
     }
     
-    val <- val + lamb*sum((beta)**2)
+    if (penalty=="ell1") {
+      val <- val + lamb*sum(abs(beta))
+    } else if(penalty=="ell2") {
+      val <- val + lamb*sum((beta)**2)
+    } else {
+      print("no penalty")
+    }
     
     return (val)
   }
@@ -132,48 +116,3 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10) {
   
   return(est_beta$par)
 }
-
-find_f1_coefs_expected_rank_l1_algorithm <- function(Y, X, lamb=10) {
-  print("starting expected rank l1 algorithm")
-  G_j_beta <- function(j, beta, X) {
-    val <- 0
-    for(i in 1:nrow(X)) {
-      val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
-    }
-    return (1/2 + val)
-  }
-  
-  S_beta <- function(beta, X, ranks_Y) {
-    val <- 0
-    for(j in 1:nrow(X)) {
-      val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
-    }
-    
-    val <- val + lamb*sum(abs(beta))
-    
-    return (val)
-  }
-  
-  if (!is.matrix(X)) {
-    X <- as.matrix(X)
-  }
-  if (!is.matrix(Y)) {
-    Y <- as.matrix(Y)
-  }
-  
-  m <- ncol(X)
-  n <- nrow(X)
-  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
-  ranks_Y <- rank(Y)
-  
-  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", X=X, ranks_Y=ranks_Y)
-  
-  return(est_beta$par)
-}
-
-# data <- simulate_rank_regression_data(200, 1)
-# data$beta
-# X <- data$X
-# Y <- data$Y
-# res <- find_f1_coefs_expected_rank_algorithm(Y, X)
-# res

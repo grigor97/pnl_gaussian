@@ -614,3 +614,67 @@ ress
 #mc_result
 # MakeTable(output = mc_result, rows = "n", cols = "fj2_func")
 
+find_f1_coefs_expected_rank_l1_algorithm <- function(Y, X, lamb=10) {
+  print("starting expected rank l1 algorithm")
+  G_j_beta <- function(j, beta, X) {
+    val <- 0
+    for(i in 1:nrow(X)) {
+      val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
+    }
+    return (1/2 + val)
+  }
+  
+  S_beta <- function(beta, X, ranks_Y) {
+    val <- 0
+    for(j in 1:nrow(X)) {
+      val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
+    }
+    
+    val <- val + lamb*sum(abs(beta))
+    
+    return (val)
+  }
+  
+  if (!is.matrix(X)) {
+    X <- as.matrix(X)
+  }
+  if (!is.matrix(Y)) {
+    Y <- as.matrix(Y)
+  }
+  
+  m <- ncol(X)
+  n <- nrow(X)
+  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
+  ranks_Y <- rank(Y)
+  
+  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", X=X, ranks_Y=ranks_Y)
+  
+  return(est_beta$par)
+}
+
+source("rank_regression.R")
+n = 500
+for(beta in c(0.1, 1, 10, 100)) {
+  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+  X <- matrix(rnorm(n), n, 1)
+  noise <- rnorm(n)
+  Y <- X %*% beta + noise
+  Y <- exponent(Y, 1/3) + 4.7
+  Y <- as.matrix(Y)
+
+  acc <- sum(c(rank(X %*% beta)) == rank(Y))/length(Y)
+  print("beta")
+  print(beta)
+  print("expected")
+  print(acc)
+
+  est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=0, penalty = "ell2")
+  acc <- sum(c(rank(X %*% beta)) == rank(Y))/length(Y)
+  print("expected rank l2 lambda 0")
+  print(acc)
+
+  est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=10, penalty = "ell2")
+  acc <- sum(c(rank(X %*% beta)) == rank(Y))/length(Y)
+  print("expected rank l2 lambda 10")
+  print(acc)
+}

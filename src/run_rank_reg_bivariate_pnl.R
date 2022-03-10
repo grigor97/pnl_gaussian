@@ -1,15 +1,25 @@
 source("rank_reg_bivariate_pnl.R")
+source("utils.R")
 
-run_bivariate_for_sim_data <- function(num_datasets, rank_alg) {
-  results <- c()
-  for(i in 1:num_datasets) {
-    print(paste("iter ", i))
-    data <- simulate_bivariate_pnl(n=100)
-    res <- find_bivariate_direction(data$data, rank_alg)
-    results <- c(results, res$est_direction)
-  }
-  
-  return(table(results))
+run_bivariate_for_sim_data <- function(rank_alg="expected_l2_rank", lamb=10, 
+                                       sample_size=100) {
+  data <- simulate_bivariate_pnl(sample_size)
+  res <- find_bivariate_direction(data$data, rank_alg, lamb=lamb, file_name = "")
+  if(res$est_direction == "1 -> 2")
+  return(T)
 }
 
-run_bivariate_for_sim_data(100, "expected_l1_rank")
+numCores <- detectCores() - 1
+print(paste("num coress  --- ", numCores))
+
+dummy_fun <- function(i) {
+  return(run_bivariate_for_sim_data())
+}
+
+system.time(
+  results <- mclapply(1:4, dummy_fun, mc.cores = numCores)
+)
+
+results <- unlist(results)
+acc <- sum(results)/length(results)
+print(paste("finished algorithms, accuracy is ", acc))

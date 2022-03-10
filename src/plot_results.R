@@ -3,7 +3,7 @@ library(ggplot2)
 library(rjson)
 
 save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, lamb, from=1, to=100,
-                       file_n='../plots/'){
+                       file_n='../plots/ell1/1000/'){
   if(to > length(gt_betas)) {
     to <- length(gt_betas)
   }
@@ -48,18 +48,18 @@ save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, lamb, from=1, 
   return(pl)
 }
 
-ress <- fromJSON(file = "../res/all_betas_1000_1_no_regularization")
+ress <- fromJSON(file = "../res/all_betas_l1_lamb_100_1000_1_100_13")
 ress
 
-exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
-fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
-# exp_l1_betas <- matrix(ress$exp_l1_betas, ress$num_datasets, ress$num_betas)
+# exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
+# fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
+exp_l1_betas <- matrix(ress$exp_l1_betas, ress$num_datasets, ress$num_betas)
 betas <- ress$betas
 
-save_plots(exp_betas, betas, alg_name='exp_rank_', ress$lamb, from=1, to = 13, 
-           n=ress$n, m=ress$m)
-save_plots(fixed_betas, betas, alg_name='fix_point_', ress$lamb, from=1, to = 13,
-           n=ress$n, m=ress$m)
-
-# save_plots(exp_l1_betas, betas, alg_name='exp_l1_rank_', ress$lamb, from=1, to = 13, 
+# save_plots(exp_betas, betas, alg_name='exp_rank_', ress$lamb, from=1, to = 13, 
 #            n=ress$n, m=ress$m)
+# save_plots(fixed_betas, betas, alg_name='fix_point_', ress$lamb, from=1, to = 13,
+#            n=ress$n, m=ress$m)
+
+save_plots(exp_l1_betas, betas, alg_name='exp_l1_rank_', ress$lamb, from=1, to = 7,
+           n=ress$n, m=ress$m)
