@@ -1,4 +1,4 @@
-source("rank_regression.R")
+source("rank_regression/rank_regression.R")
 library(dHSIC)
 
 find_estimates <- function(Y, X, rank_alg, lamb) {

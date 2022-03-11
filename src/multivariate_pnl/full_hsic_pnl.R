@@ -1,7 +1,5 @@
 library(dHSIC)
 
-set.seed(12)
-
 get_noise <- function(params, xj, x_rem) {
   num_cols = ncol(x_rem)
   fj2_inverse_xj = params[1]*xj + params[2]*xj^2 + params[3]*xj^3

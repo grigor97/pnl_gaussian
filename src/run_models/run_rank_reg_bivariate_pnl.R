@@ -1,4 +1,4 @@
-source("rank_reg_bivariate_pnl.R")
+source("bivariate_pnl/rank_reg_bivariate_pnl.R")
 source("utils.R")
 library(rjson)
 

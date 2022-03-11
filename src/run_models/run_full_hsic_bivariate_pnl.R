@@ -1,5 +1,5 @@
-source("full_hsic_pnl.R")
-source("rank_reg_bivariate_pnl.R")
+source("multivariate_pnl/full_hsic_pnl.R")
+source("bivariate_pnl/rank_reg_bivariate_pnl.R")
 
 correct_num <- 0
 for(i in 1:100) {
@@ -17,4 +17,5 @@ for(i in 1:100) {
     correct_num <- correct_num + 1
   }
 }
+
 correct_num

@@ -1,6 +1,6 @@
 library(parallel)
 library(rjson)
-source("rank_regression.R")
+source("rank_regression/rank_regression.R")
 
 
 run_rank_regression_algorithms <- function(n, m, max_iter, batch_size, lamb){
