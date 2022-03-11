@@ -1,6 +1,7 @@
 source("bivariate_pnl/rank_reg_bivariate_pnl.R")
 source("utils.R")
 library(rjson)
+library(parallel)
 
 run_bivariate_for_sim_data <- function(rank_alg, lamb, 
                                        sample_size) {
