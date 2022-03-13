@@ -45,7 +45,7 @@ for(n in sample_sizes) {
   }
 }
 
-res <- list("lambdas"=lambdas, "all_accs"=all_accs, "algs"=algs)
+res <- list("lambdas"=lambdas, "all_accs"=all_accs, "alg"=alg)
 
 res
 
