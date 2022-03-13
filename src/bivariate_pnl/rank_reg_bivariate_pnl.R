@@ -37,8 +37,8 @@ find_bivariate_direction <- function(data, rank_alg, lamb, file_name="") {
   X <- data[, 1]
   Y <- data[, 2]
   
-  XX <- cbind(X, X^2, X^3, X^4)
-  YY <- cbind(Y, Y^2, Y^3, Y^4)
+  XX <- cbind(X, X^2)
+  YY <- cbind(Y, Y^2)
   
   res1 <- find_estimates(Y, XX, rank_alg, lamb)
   res2 <- find_estimates(X, YY, rank_alg, lamb)
