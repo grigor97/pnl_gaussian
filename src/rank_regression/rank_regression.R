@@ -44,7 +44,7 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
     
     A <- t(batch_X) %*% batch_X
     if(nrow(A) > 1) {
-      P <- inv(A) %*% t(batch_X)
+      P <- solve(A) %*% t(batch_X)
     } else {
       P <- 1/A[1, 1] * t(batch_X)
     }
