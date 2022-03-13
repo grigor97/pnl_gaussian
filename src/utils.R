@@ -1,5 +1,18 @@
 set.seed(12)
 
+simulate_bivariate_pnl_idf <- function(n) {
+  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+  X <- matrix(rnorm(n), n, 1)
+  beta <- runif(1, -100, 100)
+  noise <- rnorm(n)
+  Y <- (X^2) %*% beta + noise
+  Y <- exponent(Y, 1/3) + 4.7
+  data <- cbind(X, Y)
+  res <- list("data"=data, "beta"=beta)
+  
+  return(res)
+}
+
 simulate_bivariate_pnl <- function(n) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   X <- matrix(rnorm(n), n, 1)
