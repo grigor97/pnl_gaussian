@@ -51,10 +51,10 @@ system.time(
   results <- mclapply(1:num_datasets, dummy_fun, mc.cores = numCores)
 )
 results <- unlist(results)
-pred_order <- matrix(results, ncol = 4, nrow=length(results)/4, byrow = T)
+# pred_order <- matrix(results, ncol = 4, nrow=length(results)/4, byrow = T)
 
 res <- list("alg"=alg, "num_datasets"=num_datasets, "sample_size"=sample_size,
-            "pred_order"=pred_order)
+            "pred_order"=results)
 
 save_file <- "../res/mult_pnl/results4"
 save_file <- paste(save_file, alg, sep="_")
