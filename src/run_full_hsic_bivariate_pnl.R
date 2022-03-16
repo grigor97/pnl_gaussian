@@ -1,5 +1,6 @@
 source("multivariate_pnl/full_hsic_pnl.R")
 source("utils.R")
+library(rjson)
 library(parallel)
 
 run_bivariate_hsic <- function(sample_size) {
