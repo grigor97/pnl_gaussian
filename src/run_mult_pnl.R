@@ -33,7 +33,7 @@ run_mult_rank_reg <- function(sample_size, rank_alg, lamb) {
 
 num_datasets <- 100
 sample_size <- 1000
-alg <- "expected_l1_rank"
+alg <- "fixed_point"
 
 numCores <- detectCores() - 1
 print(paste("num coress  --- ", numCores))
@@ -56,7 +56,7 @@ pred_order <- matrix(results, ncol = 4, nrow=length(results)/4, byrow = T)
 res <- list("alg"=alg, "num_datasets"=num_datasets, "sample_size"=sample_size,
             "pred_order"=pred_order)
 
-save_file <- "../res/mult_pnl/results4_"
+save_file <- "../res/mult_pnl/results4"
 save_file <- paste(save_file, alg, sep="_")
 save_file <- paste(save_file, num_datasets, sep="_")
 save_file <- paste(save_file, ".json", sep="")
