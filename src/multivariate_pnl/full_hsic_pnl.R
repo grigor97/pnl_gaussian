@@ -40,7 +40,6 @@ find_last_node_naive <- function(data, nodes)
     print("versus")
     print(rem_nodes)
     
-    # FIXME check the parameters
     num_cols <- length(rem_nodes)
     num_params <- 3 + num_cols*(num_cols + 1)
     
@@ -58,7 +57,7 @@ find_last_node_naive <- function(data, nodes)
   return(last_node)
 }
 
-order_recovery_by_last_node <- function(data) 
+order_recovery_full_hsic <- function(data) 
 {
   print("start of recovering the order from data")
   order_of_nodes <- c()
@@ -72,5 +71,6 @@ order_recovery_by_last_node <- function(data)
   
   order_of_nodes <- c(cur_nodes[1], order_of_nodes)
   print("end of recovering the order from data")
+  
   return(order_of_nodes)
 }

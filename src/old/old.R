@@ -26,12 +26,6 @@ run_fixed_point <- function(n, batch_size=64, max_iter=100, tol = 1e-5) {
 }
 
 # run_fixed_point(100)
-# 
-# system.time(
-#   res_betas <- mclapply(c(1000, 3000, 5000, 10000, 15000), run_fixed_point, mc.cores = 5)
-# )
-# 
-# res_betas
 
 save_plots <- function(res_betas, file_n='/Users/grigorkeropyan/Desktop/Stat/codes/plots/batch_64/') {
   lgth <- length(res_betas)
@@ -216,19 +210,6 @@ find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100) {
 # coefs
 # data$beta
 
-
-#' Title finds beta coefficients using a fixed point iteration for a
-#' whole data. Should be called only for small sizes of n(sample size) < 1000.
-#'
-#' @param Y n i.i.d. response variables Y_i = f_2^{-1}(beta^T x_i + error_i)
-#' @param X matrix X with rows X_i corresponding to Y_i
-#' @param tol tolerance, stop the algorithm when th error is smaller than @tol
-#' @param max_iter maximum number of iteration for the algorithm
-#'
-#' @return returns the values of coefficients
-#' @export
-#'
-#' @examples
 find_f1_coefs_fixed_point <- function(Y, X, tol=1e-9, max_iter=300) {
   if (!is.matrix(X)) {
     X <- as.matrix(X)
@@ -361,37 +342,22 @@ find_f1_coefs_conditional_monte_carlo_algorithm <- function(Y, X, M=10, max_iter
 # coefs
 # data$beta
 
-# res$betas
-# means_est_betas <- colMeans(res$rank_reg_est_betas)
-# pl1 <- ggplot() + geom_line(aes(x=res$betas[1:10], y=res$betas[1:10] - means_est_betas[1:10]))+
-#   labs(title = "rank regression for 100 datasets", 
-#        x="ground truth betas", y="l_2 dist of betas") +
-#   theme(plot.title = element_text(hjust = 0.5))
-# pl1
-# 
-# ggsave(filename = '/Users/grigorkeropyan/pnl_gaussian/plots/rank_reg_diff_plot_100.png', plot = pl1)
+func2 <- function(x) {
+  return(x^3 - 2^x - 5)
+}
 
-# data <- simulate_rank_regression_data(10000, 6)
-# saveRDS(data, '/Users/grigorkeropyan/pnl_gaussian/datasets/data1')
-# data <- readRDS('/Users/grigorkeropyan/pnl_gaussian/datasets/data1')
-# data
+grad_func2 <- function(x) {
+  diag <- 3*x^2 - 2
+  return(diag(diag))
+}
 
-# func2 <- function(x) {
-#   return(x^3 - 2^x - 5)
-# }
-# 
-# grad_func2 <- function(x) {
-#   diag <- 3*x^2 - 2
-#   return(diag(diag))
-# }
-# 
-# grad_func2(c(9, 7))
-# func2(c(9, 7))
-# 
-# uniroot(func2, c(2,3))
-# 
-# uniroot(func2, lower = 2, upper = 3)
-# newton_root_finding(func2, c(0, 0), grad_func2)
+grad_func2(c(9, 7))
+func2(c(9, 7))
+
+uniroot(func2, c(2,3))
+
+uniroot(func2, lower = 2, upper = 3)
+newton_root_finding(func2, c(0, 0), grad_func2)
 
 # sub_vals <- c(2, 5, 6)
 # val <- cdf_z(10.95, sub_vals)

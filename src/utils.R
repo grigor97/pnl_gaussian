@@ -1,5 +1,6 @@
 set.seed(12)
 
+# identifiable model
 simulate_bivariate_pnl_idf <- function(n) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   X <- matrix(rnorm(n), n, 1)
@@ -13,6 +14,7 @@ simulate_bivariate_pnl_idf <- function(n) {
   return(res)
 }
 
+# non identifiable model
 simulate_bivariate_pnl <- function(n) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   X <- matrix(rnorm(n), n, 1)
@@ -42,4 +44,30 @@ simulate_rank_regression_data <- function(n, m) {
   
   res <- list("X"=X, "Y"=Y, "beta"=beta)
   return(res)
+}
+
+simulate_mult_pnl <- function(n, fj2_func="cube") {
+  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+  
+  x1 <- rnorm(n)
+  noise2 = rnorm(n)
+  noise3 = rnorm(n)
+  noise4 = rnorm(n)
+  
+  beta2 <- runif(1, -100, 100)
+  beta3 <- runif(1, -100, 100)
+  x2 <- 6.7 + beta2*sin(x1) + noise2
+  x2 <- x2^2 + 1
+  x3 <- 54 + 100*cos(x1) + noise3
+  x3 <- x3^4 + 5
+  if(fj2_func == "cube") {
+    x4 <- (x2 + x3 + noise3)^3
+  } else {
+    x4 <- x2 + x3 + noise3
+  }
+  
+  data <- cbind(x1, x2, x3, x4)
+  data <- data.frame(data)
+  
+  return(data)
 }
