@@ -27,7 +27,9 @@ run_mult_rank_reg <- function(sample_size, rank_alg, lamb) {
 }
 
 # res_hsic <- run_mult_full_hsic(100)
-res_rank <- run_mult_rank_reg(100, rank_alg="expected_l2_rank", lamb=10)
+res_rank <- run_mult_rank_reg(500, rank_alg="expected_l1_rank", lamb=10)
+# res_rank <- run_mult_rank_reg(500, rank_alg="expected_l2_rank", lamb=10)
+# res_rank <- run_mult_rank_reg(500, rank_alg="fixed_point", lamb=10)
 
 
 

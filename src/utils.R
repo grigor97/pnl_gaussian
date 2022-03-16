@@ -49,21 +49,23 @@ simulate_rank_regression_data <- function(n, m) {
 simulate_mult_pnl <- function(n, fj2_func="cube") {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   
-  x1 <- rnorm(n)
   noise2 = rnorm(n)
   noise3 = rnorm(n)
   noise4 = rnorm(n)
   
   beta2 <- runif(1, -100, 100)
   beta3 <- runif(1, -100, 100)
-  x2 <- 6.7 + beta2*sin(x1) + noise2
-  x2 <- x2^2 + 1
-  x3 <- 54 + 100*cos(x1) + noise3
-  x3 <- x3^4 + 5
+  beta4 <- runif(1, -100, 100)
+  
+  x1 <- rnorm(n)
+  x2 <- 6.7 + beta2*x1^2 + noise2
+  x2 <- exponent(x2, 1/3) + 1
+  x3 <- 1.2 + beta3*x1^2 + noise3
+  x3 <- exponent(x3, 1/5) + 5
   if(fj2_func == "cube") {
-    x4 <- (x2 + x3 + noise3)^3
+    x4 <- (beta4*(x2 + x3) + noise4)^3
   } else {
-    x4 <- x2 + x3 + noise3
+    x4 <- beta4*(x2 + x3) + noise4
   }
   
   data <- cbind(x1, x2, x3, x4)
