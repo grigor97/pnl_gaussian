@@ -50,6 +50,7 @@ dummy_fun <- function(i) {
 system.time(
   results <- mclapply(1:num_datasets, dummy_fun, mc.cores = numCores)
 )
+#FIXME
 results <- unlist(results)
 # pred_order <- matrix(results, ncol = 4, nrow=length(results)/4, byrow = T)
 

@@ -2,28 +2,32 @@
 library(ggplot2)
 library(rjson)
 
-save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, lamb, from=1, to=100,
-                       file_n='../plots/ell1/1000/'){
+save_plots <- function(est_betas1, est_betas2, name1, name2, gt_betas, alg_name, 
+                       n, m, lamb, from=1, to=100, file_n='../plots/rank_regression/1000/'){
   if(to > length(gt_betas)) {
     to <- length(gt_betas)
   }
-  estimated_betas_cut <- estimated_betas[, from:to]
+  estimated_betas_cut1 <- est_betas1[, from:to]
+  estimated_betas_cut2 <- est_betas2[, from:to]
   gt_betas <- gt_betas[from:to]
-  number_of_datasets <- nrow(estimated_betas_cut)
-  stacked_vals <- stack(as.data.frame(estimated_betas_cut))
+  number_of_datasets <- nrow(estimated_betas_cut1)
+  stacked_vals1 <- stack(as.data.frame(estimated_betas_cut1))
+  stacked_vals2 <- stack(as.data.frame(estimated_betas_cut2))
   
-  title_name <- paste(alg_name, 'rank regression for')
-  title_name <- paste(title_name, number_of_datasets)
-  title_name <- paste(title_name, "datasets")
-  pl <- ggplot() + geom_boxplot(aes(x=stacked_vals$ind, y=stacked_vals$values, colour='estimated betas')) +
-    geom_point(aes(x=unique(stacked_vals$ind), y=gt_betas, colour='ground truth betas')) +
-    labs(title=title_name, x="",y="betas") +
+  # title_name <- paste(alg_name, 'rank regression for')
+  # title_name <- paste(title_name, number_of_datasets)
+  # title_name <- paste(title_name, "datasets")
+  pl <- ggplot() + 
+    geom_boxplot(aes(x=stacked_vals1$ind, y=stacked_vals1$values, colour=name1)) +
+    geom_boxplot(aes(x=stacked_vals2$ind, y=stacked_vals2$values, colour=name2), alpha=0.3) +
+    geom_point(aes(x=unique(stacked_vals1$ind), y=gt_betas, colour='ground truth')) +
+    labs(x="",y="betas") + # labs(title=title_name, x="",y="betas") +
     scale_color_manual(name='',
-                       breaks=c('estimated betas', 'ground truth betas'),
-                       values=c('black', 'red')) +
+                       breaks=c(name1, name2, 'ground truth'),
+                       values=c('blue4', 'black', 'red')) +
     guides(colour = guide_legend(override.aes = list(
-      linetype = c("solid", "blank"),
-      color = c("black","red")
+      linetype = c("solid", "solid", "blank"),
+      color = c("blue4", 'black', "red")
     ))) +
     # theme(legend.position=c(0.15,0.91), plot.title = element_text(hjust = 0.5))
     theme(legend.position='top', plot.title = element_text(hjust = 0.5))
@@ -48,18 +52,14 @@ save_plots <- function(estimated_betas, gt_betas, alg_name, n, m, lamb, from=1, 
   return(pl)
 }
 
-ress <- fromJSON(file = "../res/all_betas_l2_lamb_1_500_1_100_13")
-ress
+res10 <- fromJSON(file = "../res/rank_regression/1000/all_betas_1000_1_no_regularization")
+res10
 
-exp_betas <- matrix(ress$exp_betas, ress$num_datasets, ress$num_betas)
-fixed_betas <- matrix(ress$fixed_betas, ress$num_datasets, ress$num_betas)
-exp_l1_betas <- matrix(ress$exp_l1_betas, ress$num_datasets, ress$num_betas)
-betas <- ress$betas
+exp_l2_betas <- matrix(res10$exp_betas, res10$num_datasets, res10$num_betas)
+fixed_betas <- matrix(res10$fixed_betas, res10$num_datasets, res10$num_betas)
+# exp_l1_betas <- matrix(res10$exp_l1_betas, res10$num_datasets, res10$num_betas)
+betas <- res10$betas
 
-save_plots(exp_betas, betas, alg_name='exp_rank_', ress$lamb, from=1, to = 13,
-           n=ress$n, m=ress$m)
-save_plots(fixed_betas, betas, alg_name='fix_point_', ress$lamb, from=1, to = 13,
-           n=ress$n, m=ress$m)
+save_plots(exp_l2_betas, fixed_betas, "exp no-reg", "fixed_point", betas, alg_name='', 
+           res10$lamb, from=1, to = 100, n=res10$n, m=res10$m)
 
-save_plots(exp_l1_betas, betas, alg_name='exp_l1_rank_', ress$lamb, from=1, to = 13,
-           n=ress$n, m=ress$m)

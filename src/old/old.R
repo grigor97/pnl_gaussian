@@ -644,3 +644,47 @@ for(beta in c(0.1, 1, 10, 100)) {
   print("expected rank l2 lambda 10")
   print(acc)
 }
+
+find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2") {
+  print(paste("starting expected rank ", penalty))
+  G_j_beta <- function(j, beta, X) {
+    val <- 0
+    for(i in 1:nrow(X)) {
+      val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
+    }
+    return (1/2 + val)
+  }
+  
+  S_beta <- function(beta, X, ranks_Y) {
+    val <- 0
+    for(j in 1:nrow(X)) {
+      val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
+    }
+    
+    if (penalty=="ell1") {
+      val <- val + lamb*sum(abs(beta))
+    } else if(penalty=="ell2") {
+      val <- val + lamb*sum((beta)**2)
+    } else {
+      print("no penalty")
+    }
+    
+    return (val)
+  }
+  
+  if (!is.matrix(X)) {
+    X <- as.matrix(X)
+  }
+  if (!is.matrix(Y)) {
+    Y <- as.matrix(Y)
+  }
+  
+  m <- ncol(X)
+  n <- nrow(X)
+  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
+  ranks_Y <- rank(Y)
+  
+  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", X=X, ranks_Y=ranks_Y)
+  
+  return(est_beta$par)
+}

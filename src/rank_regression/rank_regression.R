@@ -9,17 +9,18 @@ cdf_z <- function(y, subtract_values) {
 
 inverse <- function(f, lower, upper){
   function(y, arg){
-    if(f(lower, arg) - y > 0) {
-      return(lower)
-    }
-    if (f(upper, arg) - y < 0) {
-      return(upper)
-    }
-    uniroot(function(x){f(x, arg) - y}, lower = lower, upper = upper, tol=1e-3,)[1]$root
+    # if(f(lower, arg) - y > 0) {
+    #   return(lower)
+    # }
+    # if (f(upper, arg) - y < 0) {
+    #   return(upper)
+    # }
+    uniroot(function(x){f(x, arg) - y}, lower = lower, upper = upper, 
+            extendInt="upX", tol=1e-3,)[1]$root
   }
 }
 
-inverse_cdf_z <- inverse(cdf_z, -10000000, 10000000)
+inverse_cdf_z <- inverse(cdf_z, -100, 100)
 
 find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64, 
                                                  max_iter=100, tol=1e-9) {
@@ -75,29 +76,56 @@ find_f1_coefs_fixed_point_stochastic <- function(Y, X, batch_size=64,
 # possible penalties are ell1 and ell2
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2") {
   print(paste("starting expected rank ", penalty))
-  G_j_beta <- function(j, beta, X) {
+  G_j_beta <- function(beta, j, X) {
     val <- 0
     for(i in 1:nrow(X)) {
+      if(i == j) {
+        next
+      }
       val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
     }
-    return (1/2 + val)
+    return (1 + val)
   }
   
-  S_beta <- function(beta, X, ranks_Y) {
+  grad_G_j_beta <- function(beta, j, X) {
+    grad <- 0
+    for(i in 1:nrow(X)) {
+      if(i == j) {
+        next
+      }
+      grad <- grad + dnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)*(X[j, ] - X[i, ])/2**0.5
+    }
+    return (grad)
+  }
+  
+  S_beta <- function(beta, X, ranks_Y, lamb, penalty) {
     val <- 0
     for(j in 1:nrow(X)) {
-      val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
+      val <- val + (ranks_Y[j] - G_j_beta(beta, j, X))**2
     }
     
     if (penalty=="ell1") {
       val <- val + lamb*sum(abs(beta))
     } else if(penalty=="ell2") {
       val <- val + lamb*sum((beta)**2)
-    } else {
-      print("no penalty")
-    }
+    } 
     
     return (val)
+  }
+  
+  grad_S_beta <- function(beta, X, ranks_Y, lamb, penalty) {
+    grad <- 0
+    for(j in 1:nrow(X)) {
+      grad <- grad - 2*(ranks_Y[j] - G_j_beta(beta, j, X))*grad_G_j_beta(beta, j, X)
+    }
+    
+    if (penalty=="ell1") {
+      grad <- grad + lamb*sign(beta)
+    } else if(penalty=="ell2") {
+      grad <- grad + 2*lamb*beta
+    } 
+    
+    return (grad)
   }
   
   if (!is.matrix(X)) {
@@ -112,7 +140,9 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2")
   coefs <- matrix(runif(m, min=-10, max=10), m, 1)
   ranks_Y <- rank(Y)
   
-  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", X=X, ranks_Y=ranks_Y)
+  est_beta <- optim(par=coefs, fn=S_beta, gr=grad_S_beta, method = "BFGS", 
+                    control = list(trace=T),
+                    X=X, ranks_Y=ranks_Y, lamb=lamb, penalty=penalty)
   
   return(est_beta$par)
 }
