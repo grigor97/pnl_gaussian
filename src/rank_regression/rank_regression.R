@@ -146,3 +146,120 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2")
   
   return(est_beta$par)
 }
+
+softmax_stable <- function(input_x) {
+  # softmax(x) = softmax(x+c)
+  x_shifted <- input_x - max(input_x)
+  numerator <- exp(x_shifted)
+  denominator <- sum(numerator)
+  
+  softmax <- numerator/denominator
+  return(softmax)
+}
+
+find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=1000, max_iter=100, tol=1e-9) {
+  ranks_Y <- rank(Y)
+  n <- nrow(X)
+  m <- ncol(X)
+  
+  Z <- matrix(data=rnorm(M*n), nrow = n, ncol = M)
+  Z <- apply(Z, 2, sort)
+  Z <- Z[ranks_Y, ]
+  
+  inv_XTX <- solve(t(X) %*% X)
+  B <-  inv_XTX %*% t(X) %*% Z
+  Z_hat <- X %*% B
+  ssf <- colSums(Z_hat**2)
+  # v <- exp(ssf/2)
+  
+  coefs <- runif(m, min=-10, max=10)
+  for(iter in 1:max_iter) {
+    u_beta <- X %*% (B - coefs)
+    log_u_beta <- -colSums(u_beta**2)/2
+    log_w <- ssf/2 + log_u_beta
+    re_weights <- softmax_stable(log_w)
+    
+    # print('re_weigths')
+    # print(sum(re_weights == 1))
+    
+    next_coefs <- c(B %*% re_weights)
+    if(sum((next_coefs - coefs)**2)**0.5 < tol) {
+      coefs <- next_coefs
+      break
+    }
+    coefs <- next_coefs
+    # print("coefs")
+    # print(coefs)
+  }
+  
+  return (coefs)
+}
+
+find_f1_coefs_cond_monte_carlo_algorithm <- function(Y, X, M=1000, max_iter=100, tol=1e-9) {
+  n <- nrow(X)
+  m <- ncol(X)
+  ranks_Y <- rank(Y)
+  # centering a matrix column wise
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  inv_XTX <- solve(t(X) %*% X)
+  M_mult <- inv_XTX %*% t(X)
+  
+  B_hat <- matrix(0, nrow=m, ncol=M)
+  rss_hats <- c()
+  
+  for(i in 1:M) {
+    # Generate standard normal sample, standardize by sample mean and standard
+    # deviation, order and put into the same rank order as the original sample
+    max_val <- 1000000
+    while(T) {
+      z <- rnorm(n)
+      z_hat <- (z - mean(z))/sd(z)
+      z <- sort(z_hat)
+      z_hat <- z_hat[ranks_Y]
+      
+      # finding b hat and ssf hat
+      b_hat <- M_mult %*% z_hat
+      ssf_hat <- sum((X %*% b_hat)**2)
+      rss_hat <- n-1-ssf_hat
+      
+      if(rss_hat > max_val) {
+        next
+      }
+      
+      B_hat[, i] <- b_hat
+      rss_hats <- c(rss_hats, rss_hat)
+      break
+    }
+  }
+  
+  t <- ((n-3)/rss_hats)**0.5
+  TT <- matrix(t, m, M, byrow = T)
+  log_v <- -(n-1)*log(rss_hats)/2
+  
+  coefs <- runif(m, min=-10, max=10)
+  print("intial coefs")
+  print(coefs)
+  for(i in 1:max_iter) {
+    U_beta <- X %*% (TT*B_hat - coefs)
+    u_beta <- colSums(U_beta**2)
+    log_u_beta <- -u_beta/2
+    
+    log_w <- log_v + log_u_beta
+    re_weights <- softmax_stable(log_w)
+  
+    next_coefs <- c(B_hat %*% re_weights)
+    
+    if(sum((next_coefs - coefs)**2)**0.5 < tol) {
+      coefs <- next_coefs
+      print(paste("converged in iteration ", i))
+      break
+    }
+    
+    coefs <- next_coefs
+    print("coefs")
+    print(coefs)
+  }
+  
+  return (coefs)
+}

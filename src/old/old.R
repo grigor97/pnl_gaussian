@@ -1,78 +1,16 @@
 print("here are the codes that do not run currently")
 
-# TODO maybe standardize the data
-run_fixed_point <- function(n, batch_size=64, max_iter=100, tol = 1e-5) {
-  data <- simulate_rank_regression_data(n, 6)
-
-  X <- data$X
-  Y <- data$Y
-  beta <- data$beta
-
-  ranks_Y <- rank(Y)
-  ecdf_Y <- ranks_Y/(n+1)
-  G_beta <- Gbeta(beta, ecdf_Y, X)
-
-  pred_beta <- find_f1_coefs_fixed_point_stochastic(Y, X, batch_size = batch_size,
-                                                    max_iter = max_iter, tol=tol)
-
-  G_pred_beta <- Gbeta(pred_beta, ecdf_Y, X)
-
-  res <- list("gt_beta"=beta, "pred_beta"=c(pred_beta), "G_beta"=c(G_beta),
-              "G_pred_beta"=c(G_pred_beta),
-              "n"=nrow(X), "m"=ncol(X), "max_iter"=max_iter,
-              "batch_size"=batch_size, "tol"=tol,
-              "l2_dist_betas"=sum((pred_beta - beta)**2)**0.5)
+Gbeta <- function(beta, ecdf_Y, X) {
+  if (!is.matrix(X)) {
+    X <- as.matrix(X)
+  }
+  
+  sub_vals <- X %*% beta
+  zhat <- as.vector(sapply(ecdf_Y, inverse_cdf_z, arg=sub_vals))
+  
+  res <- t(X) %*% (zhat - X %*% beta)
   return (res)
 }
-
-# run_fixed_point(100)
-
-save_plots <- function(res_betas, file_n='/Users/grigorkeropyan/Desktop/Stat/codes/plots/batch_64/') {
-  lgth <- length(res_betas)
-  for(i in 1:lgth) {
-    pred <- c(res_betas[[i]]$pred_beta)
-    actual <- res_betas[[i]]$gt_beta
-    title_name <- paste('sample size(n) ', res_betas[[i]]$n)
-    title_name <- paste(title_name, ", batch size ", sep='')
-    title_name <- paste(title_name, res_betas[[i]]$batch_size)
-    title_name <- paste(title_name, ", max iter ", sep='')
-    title_name <- paste(title_name, res_betas[[i]]$max_iter)
-    pl <- ggplot() +
-      geom_point(aes(x=1:6, y=actual, colour="ground truth"), size=1.5) +
-      geom_point(aes(x=1:6, y=pred, colour="estimated"), size=1) +
-      labs(title=title_name,
-           x="beta1:6", y="ground truth and estimated beta's" ) +
-      scale_color_manual(name="legend", breaks=c("ground truth", "estimated"),
-                         values=c("ground truth"="black", "estimated"="red")) +
-      theme(legend.position = c(0.1,0.91), plot.title = element_text(hjust = 0.5))
-
-    file_name <- paste(file_n, 'betas_')
-    file_name <- paste(file_name, res_betas[[i]]$n, sep='')
-    file_name <- paste(file_name, '_')
-    file_name <- paste(file_name, res_betas[[i]]$batch_size, sep='')
-    file_name <- paste(file_name, '.png', sep='')
-    ggsave(filename = file_name, plot = pl)
-
-    pl_G <- ggplot() +
-      geom_point(aes(x=1:6, y=res_betas[[i]]$G_beta, colour="G_beta"), size=1.5) +
-      geom_point(aes(x=1:6, y=res_betas[[i]]$G_pred_beta, colour="G_pred_beta"), size=1) +
-      labs(title=title_name,
-           x="beta1:6", y="ground truth and estimated G_beta's" ) +
-      scale_color_manual(name="legend", breaks=c("G_beta", "G_pred_beta"),
-                         values=c("G_beta"="black", "G_pred_beta"="red")) +
-      theme(legend.position = c(0.1,0.91), plot.title = element_text(hjust = 0.5))
-
-    file_name_G <- paste(file_n, 'G_betas_')
-    file_name_G <- paste(file_name_G, res_betas[[i]]$n, sep='')
-    file_name_G <- paste(file_name_G, '_')
-    file_name_G <- paste(file_name_G, res_betas[[i]]$batch_size, sep='')
-    file_name_G <- paste(file_name_G, '.png', sep='')
-    ggsave(filename = file_name_G, plot = pl_G)
-  }
-}
-
-# save_plots(res_betas)
-
 # FIXME values of matrix in Z are too large
 Gbeta_grad <-function(beta, ecdf_Y, X, pert=1e-4) {
   n <- nrow(X)
@@ -95,6 +33,23 @@ Gbeta_grad <-function(beta, ecdf_Y, X, pert=1e-4) {
   grad_G_beta <- -n*t(X) %*% (Z_bar %*% X_bar - X)
 
   return (grad_G_beta)
+}
+
+compute_G_beta <- function(n) {
+  data <- simulate_rank_regression_data(n, 6)
+  
+  X <- data$X
+  Y <- data$Y
+  
+  ranks_Y <- rank(Y)
+  ecdf_Y <- ranks_Y/(n+1)
+  ecdf_Y
+  
+  beta <- data$beta
+  g_beta <- Gbeta(ecdf_Y, X, beta)
+  
+  res <- list("gt_beta"=beta, "G_beta"=g_beta)
+  return (res)
 }
 
 newton_root_finding <- function(f, start_point, grad_f, ecdf_Y, X, tol=1e-9, max_iter=1000) {
@@ -120,95 +75,6 @@ newton_root_finding <- function(f, start_point, grad_f, ecdf_Y, X, tol=1e-9, max
   print("max iterations exceeded ...")
   return (list("root_approx"=cur_point, "iterations"=max_iter))
 }
-
-compute_G_beta <- function(n) {
-  data <- simulate_rank_regression_data(n, 6)
-
-  X <- data$X
-  Y <- data$Y
-
-  ranks_Y <- rank(Y)
-  ecdf_Y <- ranks_Y/(n+1)
-  ecdf_Y
-
-  beta <- data$beta
-  g_beta <- Gbeta(ecdf_Y, X, beta)
-
-  res <- list("gt_beta"=beta, "G_beta"=g_beta)
-  return (res)
-}
-
-get_ranks <- function(df) {
-  ranks <- data.frame(matrix(ncol=0, nrow=nrow(df)))
-  for(col_name in colnames(df)) {
-    ranks[col_name] <- rank(df[[col_name]])
-  }
-  return(ranks)
-}
-
-#' Title computes the value of G(beta)
-#'
-#' @param beta coefficients
-#' @param ecdf_Y adjusted empirical CDF of Y
-#' @param X matrix X with rows X_i corresponding to response variable Y_i
-#'
-#' @return value of function G in beta
-#' @export
-#'
-#' @examples
-Gbeta <- function(beta, ecdf_Y, X) {
-  if (!is.matrix(X)) {
-    X <- as.matrix(X)
-  }
-
-  sub_vals <- X %*% beta
-  zhat <- as.vector(sapply(ecdf_Y, inverse_cdf_z, arg=sub_vals))
-
-  res <- t(X) %*% (zhat - X %*% beta)
-  return (res)
-}
-
-#FIXME works only for small n and M, otherwise the u_beta become zero (vanishing)
-find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=10, max_iter=100) {
-  ranks_Y <- rank(Y)
-  n <- nrow(X)
-  m <- ncol(X)
-  coefs <- runif(m, min=-10, max=10)
-
-  Z <- matrix(data=rnorm(M*n), nrow = n, ncol = M)
-  Z <- apply(Z, 2, sort)
-  Z <- Z[ranks_Y, ]
-
-  inv_XTX <- NaN
-  if (m == 1) {
-    inv_XTX <- 1/(t(X) %*% X)
-  } else {
-    inv_XTX <- inv(t(X) %*% X)
-  }
-
-  B <-  inv_XTX %*% t(X) %*% Z
-  Z_hat <- X %*% B
-
-  ssf <- colSums(Z_hat**2)
-  v <- exp(ssf/2)
-
-  for(iter in 1:max_iter) {
-    u_beta <- X %*% (B - coefs)
-    u_beta <- colSums(u_beta**2)
-    u_beta <- exp(-u_beta/2)
-    w <- v * u_beta
-    coefs <- 1/sum(w) * (matrix(w, m, M, byrow = T)*B)
-    coefs <- rowSums(coefs)
-  }
-
-  return (coefs)
-}
-
-# data <- simulate_rank_regression_data(40, 2)
-# coefs <- find_f1_coefs_monte_carlo_algorithm(data$Y, data$X, M = 20, max_iter = 3)
-# 
-# coefs
-# data$beta
 
 find_f1_coefs_fixed_point <- function(Y, X, tol=1e-9, max_iter=300) {
   if (!is.matrix(X)) {
@@ -341,23 +207,6 @@ find_f1_coefs_conditional_monte_carlo_algorithm <- function(Y, X, M=10, max_iter
 # 
 # coefs
 # data$beta
-
-func2 <- function(x) {
-  return(x^3 - 2^x - 5)
-}
-
-grad_func2 <- function(x) {
-  diag <- 3*x^2 - 2
-  return(diag(diag))
-}
-
-grad_func2(c(9, 7))
-func2(c(9, 7))
-
-uniroot(func2, c(2,3))
-
-uniroot(func2, lower = 2, upper = 3)
-newton_root_finding(func2, c(0, 0), grad_func2)
 
 # sub_vals <- c(2, 5, 6)
 # val <- cdf_z(10.95, sub_vals)
@@ -522,55 +371,6 @@ learn_funcs_grad <- function(params, xj, x_rem) {
   return(params_grad)
 }
 
-
-simulate_recover <- function(n, fj2_func) {
-  print("start of data simulation ...")
-  x1 <- rexp(n)
-  noise1 = runif(n)
-  noise2 = runif(n)
-  noise3 = runif(n)
-  x2 <- 200 + 100*sin(x1) + noise1
-  x2 <- x2^(1/3) + 1
-  x3 <- 200 + 100*cos(x1) + noise2
-  x3 <- x3^(1/5) + 1
-  if(fj2_func == "square") {
-    x4 <- (x2 + x3 + noise3)^2
-  } else {
-    x4 <- x2 + x3 + noise3
-  }
-  
-  data <- cbind(x1, x2, x3, x4)
-  data <- data.frame(data)
-  print("end of data simulation")
-  
-  order <- order_recovery_by_last_node(data)
-  res <- list()
-  i <- 0
-  for(ord in order) {
-    i = i+1
-    node <- substring(ord, 2, 10)
-    res[paste("node", toString(i), sep="")] = strtoi(node)
-    
-  }
-  print("result of the simulation is")
-  print(res)
-  return(res)
-}
-
-
-ord <- simulate_recover(1000, "other")
-ord
-
-cn <- c(2000, 4000, 6000)
-ress <- c()
-for(n in cn) {
-  ord <- simulate_recover(n, "other")
-  print(ord)
-  ress <- c(ress, ord)
-}
-
-ress 
-
 # library(MonteCarlo)
 #n_grid <- c(1000, 5000, 10000)
 #fj2_func_grid <- c("square", "other")
@@ -579,71 +379,6 @@ ress
 #                        param_list = param_list)
 #mc_result
 # MakeTable(output = mc_result, rows = "n", cols = "fj2_func")
-
-find_f1_coefs_expected_rank_l1_algorithm <- function(Y, X, lamb=10) {
-  print("starting expected rank l1 algorithm")
-  G_j_beta <- function(j, beta, X) {
-    val <- 0
-    for(i in 1:nrow(X)) {
-      val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
-    }
-    return (1/2 + val)
-  }
-  
-  S_beta <- function(beta, X, ranks_Y) {
-    val <- 0
-    for(j in 1:nrow(X)) {
-      val <- val + (ranks_Y[j] - G_j_beta(j, beta, X))**2
-    }
-    
-    val <- val + lamb*sum(abs(beta))
-    
-    return (val)
-  }
-  
-  if (!is.matrix(X)) {
-    X <- as.matrix(X)
-  }
-  if (!is.matrix(Y)) {
-    Y <- as.matrix(Y)
-  }
-  
-  m <- ncol(X)
-  n <- nrow(X)
-  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
-  ranks_Y <- rank(Y)
-  
-  est_beta <- optim(par=coefs, fn=S_beta, method = "BFGS", X=X, ranks_Y=ranks_Y)
-  
-  return(est_beta$par)
-}
-
-source("rank_regression.R")
-n = 500
-for(beta in c(0.1, 1, 10, 100)) {
-  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
-  X <- matrix(rnorm(n), n, 1)
-  noise <- rnorm(n)
-  Y <- X %*% beta + noise
-  Y <- exponent(Y, 1/3) + 4.7
-  Y <- as.matrix(Y)
-
-  acc <- sum(c(rank(X %*% beta)) == rank(Y))/length(Y)
-  print("beta")
-  print(beta)
-  print("expected")
-  print(acc)
-
-  est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=0, penalty = "ell2")
-  acc <- sum(c(rank(X %*% beta)) == rank(Y))/length(Y)
-  print("expected rank l2 lambda 0")
-  print(acc)
-
-  est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=10, penalty = "ell2")
-  acc <- sum(c(rank(X %*% beta)) == rank(Y))/length(Y)
-  print("expected rank l2 lambda 10")
-  print(acc)
-}
 
 find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2") {
   print(paste("starting expected rank ", penalty))
@@ -688,3 +423,55 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2")
   
   return(est_beta$par)
 }
+
+find_root <- function(val, sub_vals) {
+  dummy <- function(x, val, sub_vals) {
+    return((cdf_z(x, sub_vals) - val)**2)
+  }
+  
+  grad_cdf_z <- function(y, sub_vals) {
+    grad = 0
+    for(i in sub_vals) {
+      grad = grad + dnorm(y - i)
+    }
+    grad = grad / length(sub_vals)
+    return(grad)
+  }
+  
+  grad_dummy <- function(x, val, sub_vals) {
+    grad <- 2*(cdf_z(x, sub_vals) - val)*grad_cdf_z(x, sub_vals)
+    return (grad)
+  }
+  
+  res <- optim(par=runif(1, -10, 10), fn=dummy, gr=grad_dummy, method = "BFGS", 
+               # control = list(trace=T),
+               val=val, sub_vals=sub_vals)
+  return(res$par)
+}
+
+
+n <- 2000
+vals <- runif(n, -10000, 10000) 
+vals <- rank(vals)/(length(vals) + 1)
+sub_vals <- runif(n, -10000, 10000) 
+
+system.time(
+  res_uniroot <- sapply(vals, inverse_cdf_z, arg=sub_vals)
+)
+
+system.time(
+  res_optim <- sapply(vals, find_root, sub_vals=sub_vals)
+)
+
+
+
+zeros_optim <- sapply(res_optim, cdf_z, subtract_values=sub_vals) 
+zeros_uniroot <- sapply(res_uniroot, cdf_z, subtract_values=sub_vals)
+sum(zeros_optim < 0.5)
+sum(zeros_optim < zeros_uniroot)
+
+sum((zeros_optim - zeros_uniroot)**2)**0.5
+
+zeros_optim
+zeros_uniroot
+
