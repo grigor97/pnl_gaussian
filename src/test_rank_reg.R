@@ -4,6 +4,7 @@ library(ggplot2)
 
 library(stochQN)
 
+
 simu_rr <- function(n, m) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   

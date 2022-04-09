@@ -319,8 +319,8 @@ rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
     gt_lik <- prl(gt_beta, Y, X)
   }
   
-  return(list("prl_beta"=res$par, "prl_lik"=prl_lik, 
-              "gt_beta"=gt_beta, "gt_lik"=gt_lik))
+  return(list("est_beta"=res$par, "est_obj"=prl_lik, 
+              "gt_beta"=gt_beta, "gt_obj"=gt_lik))
 }
 
 rank.reg.օprl.gaussian <- function(Y, X, gt_beta=NA) {
@@ -371,8 +371,8 @@ rank.reg.օprl.gaussian <- function(Y, X, gt_beta=NA) {
     gt_lik <- oprl(gt_beta, Y, X)
   }
   
-  return(list("oprl_beta"=res$par, "oprl_lik"=oprl_lik, 
-              "gt_beta"=gt_beta, "gt_lik"=gt_lik))
+  return(list("est_beta"=res$par, "est_obj"=oprl_lik, 
+              "gt_beta"=gt_beta, "gt_obj"=gt_lik))
 }
 
 # No scale of beta, no Gaussian noise specification! Kendall rank correlation!
@@ -418,6 +418,6 @@ lin.tr.models.mrc <- function(Y, X, gt_beta=NA) {
     gt_Sn <- Sn_beta(gt_beta, Y, X)
   }
   
-  return(list("mrc_beta"=res$par, "mrc_Sn"=mrc_Sn, 
-              "gt_beta"=gt_beta, "gt_Sn"=gt_Sn))
+  return(list("est_beta"=res$par, "est_obj"=mrc_Sn, 
+              "gt_beta"=gt_beta, "gt_obj"=gt_Sn))
 }

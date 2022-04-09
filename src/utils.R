@@ -19,6 +19,19 @@ simulate_rank_regression_data <- function(n, m) {
   return(res)
 }
 
+simulate_rank_regression_data_fixed_beta <- function(n, m, beta) {
+  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+  
+  noise <- rnorm(n)
+  X <- matrix(rnorm(n*m), n, m)
+  
+  Y <- X %*% beta + noise
+  Y <- exponent(Y, 1/3) + 4.7
+  
+  res <- list("X"=X, "Y"=Y, "beta"=beta)
+  return(res)
+}
+
 # identifiable model
 simulate_bivariate_pnl_idf <- function(n) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
