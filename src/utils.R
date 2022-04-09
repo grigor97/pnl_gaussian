@@ -6,8 +6,8 @@ simulate_rank_regression_data <- function(n, m) {
   noise <- rnorm(n)
   X <- matrix(rnorm(n*m), n, m)
   
-  # beta <- runif(n=m, min=-1, max=1)
   beta <- runif(n=m, min=-100, max=100)
+  # beta <- runif(n=m, min=-1, max=1)
   # beta[1] <- 0
   # beta[3] <- 0
   # beta[4] <- 0

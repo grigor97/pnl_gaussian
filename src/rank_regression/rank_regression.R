@@ -141,7 +141,7 @@ find_f1_coefs_expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2")
   ranks_Y <- rank(Y)
   
   est_beta <- optim(par=coefs, fn=S_beta, gr=grad_S_beta, method = "BFGS", 
-                    control = list(trace=T),
+                    control = list(trace=T, REPORT=1),
                     X=X, ranks_Y=ranks_Y, lamb=lamb, penalty=penalty)
   
   return(est_beta$par)
@@ -161,6 +161,8 @@ find_f1_coefs_monte_carlo_algorithm <- function(Y, X, M=1000, max_iter=100, tol=
   ranks_Y <- rank(Y)
   n <- nrow(X)
   m <- ncol(X)
+  # centering a matrix column wise
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
   
   Z <- matrix(data=rnorm(M*n), nrow = n, ncol = M)
   Z <- apply(Z, 2, sort)
@@ -238,8 +240,8 @@ find_f1_coefs_cond_monte_carlo_algorithm <- function(Y, X, M=1000, max_iter=100,
   log_v <- -(n-1)*log(rss_hats)/2
   
   coefs <- runif(m, min=-10, max=10)
-  print("intial coefs")
-  print(coefs)
+  # print("intial coefs")
+  # print(coefs)
   for(i in 1:max_iter) {
     U_beta <- X %*% (TT*B_hat - coefs)
     u_beta <- colSums(U_beta**2)
@@ -257,9 +259,165 @@ find_f1_coefs_cond_monte_carlo_algorithm <- function(Y, X, M=1000, max_iter=100,
     }
     
     coefs <- next_coefs
-    print("coefs")
-    print(coefs)
+    # print("coefs")
+    # print(coefs)
   }
   
   return (coefs)
+}
+
+# https://arxiv.org/pdf/2103.13435.pdf adopted version
+rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
+  m <- ncol(X)
+  n <- nrow(X)
+  ord <- order(Y)
+  Y <- Y[ord]
+  # FIXME centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  if(m > 1) {
+    X <- X[ord, ]
+  } else {
+    X <- matrix(X[ord], n, 1)
+  }
+  
+  prl <- function(beta, Y, X) {
+    n <- nrow(X)
+    lik <- 0
+    m_X <- X %*% beta
+    for(i in 1:(n-1)) {
+      for(j in (i+1):n) {
+        lik <- lik + log(pnorm((m_X[j] - m_X[i])/sqrt(2)))
+      }
+    }
+    
+    return(-lik)
+  }
+  
+  grad_prl <- function(beta, Y, X) {
+    n <- nrow(X)
+    grad <- 0
+    m_X <- X %*% beta
+    for(i in 1:(n-1)) {
+      for(j in (i+1):n) {
+        grad <- grad + dnorm((m_X[j] - m_X[i])/sqrt(2))*(X[j, ]- X[i, ])/(pnorm((m_X[j] - m_X[i])/sqrt(2))*sqrt(2))
+      }
+    }
+    
+    return(-grad)
+  }
+  
+  #coefs <- runif(m, -10, 10)
+  coefs <- rep(0, m)
+  res <- optim(coefs, fn=prl, gr=grad_prl, method = "BFGS", 
+               control = list(trace=T, REPORT=1),
+               Y=Y, X=X)
+  
+  prl_lik <- res$value
+  gt_lik <- NA
+  if(!is.na(gt_beta)) {
+    gt_lik <- prl(gt_beta, Y, X)
+  }
+  
+  return(list("prl_beta"=res$par, "prl_lik"=prl_lik, 
+              "gt_beta"=gt_beta, "gt_lik"=gt_lik))
+}
+
+rank.reg.օprl.gaussian <- function(Y, X, gt_beta=NA) {
+  m <- ncol(X)
+  n <- nrow(X)
+  ord <- order(Y)
+  Y <- Y[ord]
+  # FIXME centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  if(m > 1) {
+    X <- X[ord, ]
+  } else {
+    X <- matrix(X[ord], n, 1)
+  }
+  
+  oprl <- function(beta, Y, X) {
+    n <- nrow(X)
+    lik <- 0
+    m_X <- X %*% beta
+    for(i in 1:(n-1)) {
+      lik <- lik + log(pnorm((m_X[i+1] - m_X[i])/sqrt(2)))
+    }
+    
+    return(-lik)
+  }
+  
+  grad_oprl <- function(beta, Y, X) {
+    n <- nrow(X)
+    grad <- 0
+    m_X <- X %*% beta
+    for(i in 1:(n-1)) {
+      grad <- grad + dnorm((m_X[i+1] - m_X[i])/sqrt(2))*(X[i+1, ]- X[i, ])/(pnorm((m_X[i+1] - m_X[i])/sqrt(2))*sqrt(2))
+    }
+    
+    return(-grad)
+  }
+  
+  #coefs <- runif(m, -10, 10)
+  coefs <- rep(0, m)
+  res <- optim(coefs, fn=oprl, gr=grad_oprl, method = "BFGS", 
+               control = list(trace=T, REPORT=1),
+               Y=Y, X=X)
+  
+  oprl_lik <- res$value
+  gt_lik <- NA
+  if(!is.na(gt_beta)) {
+    gt_lik <- oprl(gt_beta, Y, X)
+  }
+  
+  return(list("oprl_beta"=res$par, "oprl_lik"=oprl_lik, 
+              "gt_beta"=gt_beta, "gt_lik"=gt_lik))
+}
+
+# No scale of beta, no Gaussian noise specification! Kendall rank correlation!
+# Maybe change BFGS
+# FIXME check only unit circle for beta: Consistency result under some assumptions
+# https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.454.6938&rep=rep1&type=pdf
+lin.tr.models.mrc <- function(Y, X, gt_beta=NA) {
+  m <- ncol(X)
+  n <- nrow(X)
+  ord <- order(Y)
+  Y <- Y[ord]
+  # centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+
+  if(m > 1) {
+    X <- X[ord, ]
+  } else {
+    X <- matrix(X[ord], n, 1)
+  }
+  
+  Sn_beta <- function(beta, Y, X) {
+    n <- nrow(X)
+    m_X <- X %*% beta
+    Sn <- 0
+    for(i in 1:(n-1)) {
+      for(j in (i+1):n) {
+        Sn <- Sn + 1*(Y[i] < Y[j])*(m_X[i] < m_X[j])
+      }
+    }
+    Sn <- 2*Sn/(n*(n-1))
+    
+    return(-Sn)
+  }
+  
+  coefs <- rep(0, m)
+  res <- optim(coefs, fn=Sn_beta, method = "BFGS", 
+               control = list(trace=T, REPORT=1),
+               Y=Y, X=X)
+  
+  mrc_Sn <- res$value
+  gt_Sn <- NA
+  if(!is.na(gt_beta)) {
+    gt_Sn <- Sn_beta(gt_beta, Y, X)
+  }
+  
+  return(list("mrc_beta"=res$par, "mrc_Sn"=mrc_Sn, 
+              "gt_beta"=gt_beta, "gt_Sn"=gt_Sn))
 }

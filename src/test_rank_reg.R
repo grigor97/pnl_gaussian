@@ -2,111 +2,55 @@ source('rank_regression/rank_regression.R')
 source("utils.R")
 library(ggplot2)
 
+library(stochQN)
+
+simu_rr <- function(n, m) {
+  exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+  
+  noise <- rnorm(n)
+  X <- matrix(rnorm(n*m), n, m)
+  
+  beta <- runif(n=m, min=-10000, max=10000)
+  # beta <- runif(n=m, min=-1, max=1)
+  # beta[1] <- 0
+  # beta[3] <- 0
+  # beta[4] <- 0
+  
+  Y <- X %*% beta + noise
+  Y <- exponent(Y, 1/3) + 4.7
+  
+  res <- list("X"=X, "Y"=Y, "beta"=beta)
+  return(res)
+}
+data <- simu_rr(500, 1)
+gt_beta <- data$beta
+X <- data$X
+Y <- data$Y
+
+prl_res <- rank.reg.prl.gaussian(Y, X)
+
+prl_res
+
+
+g <- function(x) {
+  res <- (-x*dnorm(x)*pnorm(x) - dnorm(x)^2)/(2*pnorm(x)^2)
+  return(res)
+}
+g(-100:100)
+n <- 30
+ggplot() + geom_line(aes(x=0:n, y=g(0:n)))
 
 # Monte Carlo methods
-data <- simulate_rank_regression_data(1000, 1)
-gt_beta <- data$beta
-X <- data$X
-Y <- data$Y
-
-gt_beta
-
-est_beta <- find_f1_coefs_cond_monte_carlo_algorithm(Y, X, M=1000, max_iter = 100)
-est_beta
-gt_beta
-
-expected_rank_algorithm <- function(Y, X, lamb=10, penalty="ell2") {
-  print(paste("starting expected rank ", penalty))
-  G_j_beta <- function(beta, j, X) {
-    val <- 0
-    for(i in 1:nrow(X)) {
-      if(i == j) {
-        next
-      }
-      val <- val + pnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)
-    }
-    return (1 + val)
-  }
-  
-  grad_G_j_beta <- function(beta, j, X) {
-    grad <- 0
-    for(i in 1:nrow(X)) {
-      if(i == j) {
-        next
-      }
-      grad <- grad + dnorm(sum((X[j, ] - X[i, ])*beta)/2**0.5)*(X[j, ] - X[i, ])/2**0.5
-    }
-    return (grad)
-  }
-  
-  S_beta <- function(beta, X, ranks_Y, lamb, penalty) {
-    val <- 0
-    for(j in 1:nrow(X)) {
-      val <- val + (ranks_Y[j] - G_j_beta(beta, j, X))**2
-    }
-    
-    if (penalty=="ell1") {
-      val <- val + lamb*sum(abs(beta))
-    } else if(penalty=="ell2") {
-      val <- val + lamb*sum((beta)**2)
-    } 
-    
-    return (val)
-  }
-  
-  grad_S_beta <- function(beta, X, ranks_Y, lamb, penalty) {
-    grad <- 0
-    for(j in 1:nrow(X)) {
-      grad <- grad - 2*(ranks_Y[j] - G_j_beta(beta, j, X))*grad_G_j_beta(beta, j, X)
-    }
-    
-    if (penalty=="ell1") {
-      grad <- grad + lamb*sign(beta)
-    } else if(penalty=="ell2") {
-      grad <- grad + 2*lamb*beta
-    } 
-    
-    return (grad)
-  }
-  
-  if (!is.matrix(X)) {
-    X <- as.matrix(X)
-  }
-  if (!is.matrix(Y)) {
-    Y <- as.matrix(Y)
-  }
-  
-  m <- ncol(X)
-  n <- nrow(X)
-  coefs <- matrix(runif(m, min=-10, max=10), m, 1)
-  ranks_Y <- rank(Y)
-  
-  est_beta <- optim(par=coefs, fn=S_beta, gr=grad_S_beta, method = "BFGS", 
-                    control = list(trace=T, maxit=4, REPORT=1),
-                    X=X, ranks_Y=ranks_Y, lamb=lamb, penalty=penalty)
-  
-  return(est_beta)
-}
-
-data <- simulate_rank_regression_data(1000, 1)
-gt_beta <- data$beta
-X <- data$X
-Y <- data$Y
-
-gt_beta
-
-system.time(
-  res_noreg <- expected_rank_algorithm(Y, X, lamb = 10, penalty = "dd")
-)
-
-res_noreg
-
-system.time(
-  res_reg <- expected_rank_algorithm(Y, X, lamb = 10, penalty = "ell2")
-)
-
-res_reg
-
+# data <- simulate_rank_regression_data(1000, 1)
+# gt_beta <- data$beta
+# X <- data$X
+# Y <- data$Y
+# 
+# gt_beta
+# 
+# est_beta <- find_f1_coefs_cond_monte_carlo_algorithm(Y, X, M=1000, max_iter = 100)
+# est_beta
+# gt_beta
 
 G_j_beta <- function(beta, j, X) {
   val <- 0
@@ -119,7 +63,7 @@ G_j_beta <- function(beta, j, X) {
   return (1 + val)
 }
 
-S_beta <- function(beta, X, ranks_Y, lamb=0, penalty="eeeee") {
+S_beta <- function(beta, X, ranks_Y, lamb=0, penalty='e') {
   val <- 0
   for(j in 1:nrow(X)) {
     val <- val + (ranks_Y[j] - G_j_beta(beta, j, X))**2
@@ -134,15 +78,29 @@ S_beta <- function(beta, X, ranks_Y, lamb=0, penalty="eeeee") {
   return (val)
 }
 
-data <- simulate_rank_regression_data(100, 1)
+data <- simulate_rank_regression_data(1000, 1)
 gt_beta <- data$beta
 X <- data$X
 Y <- data$Y
 
-gt_beta
-R <- rank(data$Y)
+est_beta <- find_f1_coefs_expected_rank_algorithm(Y, X)
 
-S_beta(gt_beta+6.5, X, R)
+est_beta_0 <- find_f1_coefs_expected_rank_algorithm(Y, X, lamb=0, penalty = 'e')
+
+S_beta(est_beta, X, rank(Y), 0, 'e')
+S_beta(est_beta_0, X, rank(Y), 0, 'e')
+S_beta(gt_beta, X, rank(Y), 0, 'e')
+est_beta
+est_beta_0
+gt_beta
+
+S_beta(est_beta, X, rank(Y), 10, 'ell2')
+S_beta(est_beta_0, X, rank(Y), 10, 'ell2')
+S_beta(gt_beta, X, rank(Y), 10, 'ell2')
+
+R <- rank(Y)
+
+S_beta(gt_beta-4, X, R)
 S_beta(gt_beta, X, R)
 
 dumm <- function(beta) {
@@ -150,8 +108,9 @@ dumm <- function(beta) {
 }
 
 gt_beta
-val_betas <- seq(-1000, 1000, 1)
+val_betas <- seq(9990, 10000, 1)
 S_vals <- sapply(val_betas, dumm)
+S_vals
 df <- data.frame(val_betas=val_betas, S_vals=S_vals)
 
 ggplot(df, aes(x= val_betas, y=S_vals)) + geom_line(color='red')
@@ -172,4 +131,7 @@ min_beta
 min(S_vals)
 
 
-
+num <- 1000
+smp <- rnorm(num)
+st <- sort(smp)
+min(st[2:num] - st[1:(num-1)])
