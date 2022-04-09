@@ -323,7 +323,7 @@ rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
               "gt_beta"=gt_beta, "gt_obj"=gt_lik))
 }
 
-rank.reg.օprl.gaussian <- function(Y, X, gt_beta=NA) {
+rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA) {
   m <- ncol(X)
   n <- nrow(X)
   ord <- order(Y)
