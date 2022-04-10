@@ -93,14 +93,14 @@ save_plots_one <- function(est_betas, gt_betas, alg_name,
   return(pl)
 }
 
-res1 <- fromJSON(file = "../res/rank_regression/all_betas_prl_1000_1_100_13.json")
+res1 <- fromJSON(file = "../res/rank_regression/all_betas_normal_scores_1000_1_100_13.json")
 res1
 
 est_betas <- matrix(res1$est_betas, res1$num_datasets, res1$num_betas)
 gt_betas <- c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 10, 30, 50, 70, 100, 1000)
-save_plots_one(est_betas, gt_betas, "prl", from=1, to=7)
+save_plots_one(est_betas, gt_betas, "normal scores", from=1, to=7)
 
-
+# (est_betas - matrix(gt_betas, 100, 13, byrow = T))/matrix(gt_betas, 100, 13, byrow = T)
 
 exp_l2_betas <- matrix(res10$exp_betas, res10$num_datasets, res10$num_betas)
 fixed_betas <- matrix(res10$fixed_betas, res10$num_datasets, res10$num_betas)

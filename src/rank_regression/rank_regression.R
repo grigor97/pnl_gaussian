@@ -423,3 +423,31 @@ lin.tr.models.mrc <- function(Y, X, gt_beta=NA) {
   return(list("est_beta"=res$par, "est_obj"=mrc_Sn, 
               "gt_beta"=gt_beta, "gt_obj"=gt_Sn))
 }
+
+# library(EnvStats)
+# works fast, even for large sample size 10^6
+lin.tr.models.normal.scores <- function(Y, X) {
+  m <- ncol(X)
+  n <- nrow(X)
+  ord <- order(Y)
+  Y <- Y[ord]
+  # centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  if(m > 1) {
+    X <- X[ord, ]
+  } else {
+    X <- matrix(X[ord], n, 1)
+  }
+  
+  norm_socres <- NA
+  if (n <= 2000) {
+    norm_socres <- evNormOrdStats(n)
+  } else {
+    norm_socres <- evNormOrdStats(n=n, method = "blom")
+  }
+  
+  est_beta <- solve(t(X) %*% X) %*% t(X) %*% norm_socres
+  
+  return(list("est_beta"=est_beta))
+}

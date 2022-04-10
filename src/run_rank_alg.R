@@ -13,9 +13,9 @@ m <- 1
 betas <- c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 10, 30, 50, 70, 100, 1000)
 num_datasets <- 100
 save_file_name <- "../res/rank_regression/"
-alg_name <- "prl"
+alg_name <- "normal_scores"
 alg <- function(Y, X) {
-  res = rank.reg.prl.gaussian(Y, X)
+  res = lin.tr.models.normal.scores(Y, X)
   return(res)
 }
 
@@ -56,8 +56,7 @@ save_result <- function(est_betas, betas, n, m, alg_name, file_name) {
   return(res)
 }
 
-
-res <- foreach(i=1:num_datasets, .combine="rbind") %dopar% {
+res <- foreach(i=1:num_datasets, .combine="rbind", .packages = c("EnvStats")) %dopar% {
   run_rank_reg_alg(n=n, m=m, betas)
 }
 

@@ -2,8 +2,7 @@ source('rank_regression/rank_regression.R')
 source("utils.R")
 library(ggplot2)
 
-library(stochQN)
-
+# library(stochQN)
 
 simu_rr <- function(n, m) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
@@ -11,7 +10,7 @@ simu_rr <- function(n, m) {
   noise <- rnorm(n)
   X <- matrix(rnorm(n*m), n, m)
   
-  beta <- runif(n=m, min=-10000, max=10000)
+  beta <- runif(n=m, min=-1, max=1)
   # beta <- runif(n=m, min=-1, max=1)
   # beta[1] <- 0
   # beta[3] <- 0
@@ -23,10 +22,15 @@ simu_rr <- function(n, m) {
   res <- list("X"=X, "Y"=Y, "beta"=beta)
   return(res)
 }
-data <- simu_rr(500, 1)
+
+data <- simu_rr(1000, 1)
 gt_beta <- data$beta
 X <- data$X
 Y <- data$Y
+
+nsc_beta <- lin.tr.models.normal.scores(Y, X)
+nsc_beta
+gt_beta
 
 prl_res <- rank.reg.prl.gaussian(Y, X)
 
