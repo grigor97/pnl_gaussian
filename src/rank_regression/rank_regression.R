@@ -272,7 +272,6 @@ rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
   n <- nrow(X)
   ord <- order(Y)
   Y <- Y[ord]
-  # FIXME centering a matrix column wise 
   X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
   
   if(m > 1) {
@@ -307,7 +306,6 @@ rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
     return(-grad)
   }
   
-  #coefs <- runif(m, -10, 10)
   coefs <- rep(0, m)
   res <- optim(coefs, fn=prl, gr=grad_prl, method = "BFGS", 
                control = list(trace=T, REPORT=1),
@@ -323,12 +321,11 @@ rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
               "gt_beta"=gt_beta, "gt_obj"=gt_lik))
 }
 
-rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA) {
+rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA, K=1) {
   m <- ncol(X)
   n <- nrow(X)
   ord <- order(Y)
   Y <- Y[ord]
-  # FIXME centering a matrix column wise 
   X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
   
   if(m > 1) {
@@ -342,7 +339,10 @@ rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA) {
     lik <- 0
     m_X <- X %*% beta
     for(i in 1:(n-1)) {
-      lik <- lik + log(pnorm((m_X[i+1] - m_X[i])/sqrt(2)))
+      end_ids <- min(i+K, n)
+      for(j in (i+1):end_ids) {
+        lik <- lik + log(pnorm((m_X[j] - m_X[i])/sqrt(2)))
+      }
     }
     
     return(-lik)
@@ -353,13 +353,15 @@ rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA) {
     grad <- 0
     m_X <- X %*% beta
     for(i in 1:(n-1)) {
-      grad <- grad + dnorm((m_X[i+1] - m_X[i])/sqrt(2))*(X[i+1, ]- X[i, ])/(pnorm((m_X[i+1] - m_X[i])/sqrt(2))*sqrt(2))
+      end_ids <- min(i+K, n)
+      for(j in (i+1):end_ids) {
+        grad <- grad + dnorm((m_X[j] - m_X[i])/sqrt(2))*(X[j, ]- X[i, ])/(pnorm((m_X[j] - m_X[i])/sqrt(2))*sqrt(2))
+      }
     }
     
     return(-grad)
   }
   
-  #coefs <- runif(m, -10, 10)
   coefs <- rep(0, m)
   res <- optim(coefs, fn=oprl, gr=grad_oprl, method = "BFGS", 
                control = list(trace=T, REPORT=1),
