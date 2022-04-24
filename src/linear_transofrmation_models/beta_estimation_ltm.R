@@ -266,14 +266,122 @@ find_f1_coefs_cond_monte_carlo_algorithm <- function(Y, X, M=1000, max_iter=100,
   return (coefs)
 }
 
+# No scale of beta, no Gaussian noise specification! Kendall rank correlation!
+# Make algorithm nlog(n) https://www.sciencedirect.com/science/article/pii/S0165176598002559 by 
+# FIXME check only unit circle for beta: Consistency result under some assumptions
+# https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.454.6938&rep=rep1&type=pdf
+lin.tr.models.mrc <- function(Y, X, gt_beta=NA) {
+  m <- ncol(X)
+  n <- nrow(X)
+  ord <- order(Y)
+  Y <- Y[ord]
+  # centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+
+  if(m > 1) {
+    X <- X[ord, ]
+  } else {
+    X <- matrix(X[ord], n, 1)
+  }
+  
+  Sn_beta <- function(beta, Y, X) {
+    n <- nrow(X)
+    m_X <- X %*% beta
+    Sn <- 0
+    for(i in 1:(n-1)) {
+      for(j in (i+1):n) {
+        Sn <- Sn + 1*(Y[i] < Y[j])*(m_X[i] < m_X[j])
+      }
+    }
+    Sn <- 2*Sn/(n*(n-1))
+    
+    return(-Sn)
+  }
+  
+  coefs <- rep(0, m)
+  res <- optim(coefs, fn=Sn_beta, method = "Nelder-Mead", 
+               control = list(trace=T, REPORT=1),
+               Y=Y, X=X)
+  
+  mrc_Sn <- res$value
+  gt_Sn <- NA
+  if(!is.na(gt_beta)) {
+    gt_Sn <- Sn_beta(gt_beta, Y, X)
+  }
+  
+  return(list("est_beta"=res$par, "est_obj"=mrc_Sn, 
+              "gt_beta"=gt_beta, "gt_obj"=gt_Sn))
+}
+
+# Monotone Rank estimator
+# no Gaussian noise specification!!!
+# FIXME last element of beta make 1
+# M(y) := y can be tried also M(y) := rank(y)
+# https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.530.3011&rep=rep1&type=pdf
+lin.tr.models.mr <- function(Y, X, gt_beta=NA) {
+  m <- ncol(X)
+  n <- nrow(X)
+  # rank_Y <- rank(Y)
+  # centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  S_beta <- function(beta, Y, X) {
+    m_X <- X %*% beta
+    rank_m_X <- rank(m_X)
+    S <- sum(Y * rank_m_X)
+    return(-S)
+  }
+  
+  coefs <- rep(0, m)
+  res <- optim(coefs, fn=S_beta, method = "Nelder-Mead", 
+               control = list(trace=T, REPORT=1),
+               Y=Y, X=X)
+  
+  mr_S <- res$value
+  gt_S <- NA
+  if(!is.na(gt_beta)) {
+    gt_S <- S_beta(gt_beta, Y, X)
+  }
+  
+  return(list("est_beta"=res$par, "est_obj"=mr_S, 
+              "gt_beta"=gt_beta, "gt_obj"=gt_S))
+}
+
+# library(EnvStats)
+# works fast, even for large sample size 10^6
+lin.ttr.models.normal.scores <- function(Y, X) {
+  m <- ncol(X)
+  n <- nrow(X)
+  ord <- order(Y)
+  Y <- Y[ord]
+  # centering a matrix column wise 
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  if(m > 1) {
+    X <- X[ord, ]
+  } else {
+    X <- matrix(X[ord], n, 1)
+  }
+  
+  norm_socres <- NA
+  if (n <= 2000) {
+    norm_socres <- evNormOrdStats(n)
+  } else {
+    norm_socres <- evNormOrdStats(n=n, method = "blom")
+  }
+  
+  est_beta <- solve(t(X) %*% X) %*% t(X) %*% norm_socres
+  
+  return(list("est_beta"=est_beta))
+}
+
 # https://arxiv.org/pdf/2103.13435.pdf adopted version
-rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
+beta.est.prl.gaussian <- function(Y, X, gt_beta=NA) {
   m <- ncol(X)
   n <- nrow(X)
   ord <- order(Y)
   Y <- Y[ord]
   X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
-  
   if(m > 1) {
     X <- X[ord, ]
   } else {
@@ -321,7 +429,7 @@ rank.reg.prl.gaussian <- function(Y, X, gt_beta=NA) {
               "gt_beta"=gt_beta, "gt_obj"=gt_lik))
 }
 
-rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA, K=1) {
+beta.est.oprl.gaussian <- function(Y, X, gt_beta=NA, K=1) {
   m <- ncol(X)
   n <- nrow(X)
   ord <- order(Y)
@@ -375,79 +483,4 @@ rank.reg.oprl.gaussian <- function(Y, X, gt_beta=NA, K=1) {
   
   return(list("est_beta"=res$par, "est_obj"=oprl_lik, 
               "gt_beta"=gt_beta, "gt_obj"=gt_lik))
-}
-
-# No scale of beta, no Gaussian noise specification! Kendall rank correlation!
-# Maybe change BFGS
-# FIXME check only unit circle for beta: Consistency result under some assumptions
-# https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.454.6938&rep=rep1&type=pdf
-lin.tr.models.mrc <- function(Y, X, gt_beta=NA) {
-  m <- ncol(X)
-  n <- nrow(X)
-  ord <- order(Y)
-  Y <- Y[ord]
-  # centering a matrix column wise 
-  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
-
-  if(m > 1) {
-    X <- X[ord, ]
-  } else {
-    X <- matrix(X[ord], n, 1)
-  }
-  
-  Sn_beta <- function(beta, Y, X) {
-    n <- nrow(X)
-    m_X <- X %*% beta
-    Sn <- 0
-    for(i in 1:(n-1)) {
-      for(j in (i+1):n) {
-        Sn <- Sn + 1*(Y[i] < Y[j])*(m_X[i] < m_X[j])
-      }
-    }
-    Sn <- 2*Sn/(n*(n-1))
-    
-    return(-Sn)
-  }
-  
-  coefs <- rep(0, m)
-  res <- optim(coefs, fn=Sn_beta, method = "BFGS", 
-               control = list(trace=T, REPORT=1),
-               Y=Y, X=X)
-  
-  mrc_Sn <- res$value
-  gt_Sn <- NA
-  if(!is.na(gt_beta)) {
-    gt_Sn <- Sn_beta(gt_beta, Y, X)
-  }
-  
-  return(list("est_beta"=res$par, "est_obj"=mrc_Sn, 
-              "gt_beta"=gt_beta, "gt_obj"=gt_Sn))
-}
-
-# library(EnvStats)
-# works fast, even for large sample size 10^6
-lin.tr.models.normal.scores <- function(Y, X) {
-  m <- ncol(X)
-  n <- nrow(X)
-  ord <- order(Y)
-  Y <- Y[ord]
-  # centering a matrix column wise 
-  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
-  
-  if(m > 1) {
-    X <- X[ord, ]
-  } else {
-    X <- matrix(X[ord], n, 1)
-  }
-  
-  norm_socres <- NA
-  if (n <= 2000) {
-    norm_socres <- evNormOrdStats(n)
-  } else {
-    norm_socres <- evNormOrdStats(n=n, method = "blom")
-  }
-  
-  est_beta <- solve(t(X) %*% X) %*% t(X) %*% norm_socres
-  
-  return(list("est_beta"=est_beta))
 }

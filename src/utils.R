@@ -1,21 +1,22 @@
 set.seed(12)
 
-simulate_rank_regression_data <- function(n, m) {
+simulate_rank_regression_data <- function(n, m, beta_max=10) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   
   noise <- rnorm(n)
   X <- matrix(rnorm(n*m), n, m)
   
-  beta <- runif(n=m, min=-100, max=100)
-  # beta <- runif(n=m, min=-1, max=1)
-  # beta[1] <- 0
-  # beta[3] <- 0
-  # beta[4] <- 0
+  beta <- runif(n=m, min=-beta_max, max=beta_max)
   
-  Y <- X %*% beta + noise
-  Y <- exponent(Y, 1/3) + 4.7
+  # make one third of the coefs zero
+  k <- m %/% 3
+  zero_inds = sample(1:m, k)
+  beta[zero_inds] <- 0
   
-  res <- list("X"=X, "Y"=Y, "beta"=beta)
+  Z <- X %*% beta + noise
+  Y <- exponent(Z, 1/3) + 4.7
+  
+  res <- list("X"=X, "Y"=Y, "beta"=beta, "noise"=noise, "Z"=Z)
   return(res)
 }
 
