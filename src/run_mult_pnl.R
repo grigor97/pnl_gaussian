@@ -71,6 +71,8 @@ save_file <- paste(save_file, ".json", sep="")
 json_data <- toJSON(result)
 write(json_data, save_file)
 
+stopCluster(cl)
+
 # res1 <- fromJSON(file = save_file)
 # matrix(res1$pred_order, length(res1$pred_order) %/% 4, 4) == res
 
