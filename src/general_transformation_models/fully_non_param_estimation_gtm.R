@@ -1,4 +1,6 @@
 # implementation of https://projecteuclid.org/journals/bernoulli/volume-25/issue-4B/Estimation-of-fully-nonparametric-transformation-models/10.3150/19-BEJ1110.short
+# here assuming the model f_2^{-1}(Y) = f_1(X) + epsilon, 
+# where f_2, f_1 and epsilon are completly unknown
 simulate.gtm.data <- function(n) {
   # as stated in the paper
   # FIXME add other transformation functions
@@ -202,7 +204,8 @@ lambda.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
 }
 
 # FIXME choose proper arguments for Nx and kernels
-lambda.vals <- function(u, U_hat, X, K=ep.kernel, int.Kint.ep.kernel, grad.K=grad.ep.kernel, j=1, Nx=10) {
+lambda.vals <- function(u, U_hat, X, K=ep.kernel, int.Kint.ep.kernel, 
+                        grad.K=grad.ep.kernel, j=1, Nx=100) {
   points <- seq(min(X), max(X), (max(X) - min(X))/Nx)
   
   lambda_vals <- c()
@@ -229,6 +232,17 @@ f2.inv.est.LAD <- function(y, Y, X) {
   U_hat <- get.U.hat(Y)
   res <- lambda.vals(T.hat.y(y, Y), U_hat, X)
   return(median(res))
+}
+
+
+# Nadaraya–Watson estimator for f_1 after estimating f_2
+f1.est.NW <- function(x, f2_inv_Y, X, K) {
+  hx <- classical.bandwidth(c(X))
+  
+  W <- sapply((x - X)/hx, K)/hx
+  W <- W/sum(W)
+  f1_x <- sum(W*Y)
+  return(f1_x)
 }
 
 # data <- simulate.gtm.data(1000)
@@ -320,28 +334,41 @@ f2.inv.est.LAD <- function(y, Y, X) {
 
 
 
+f2_inv <- function(y, i=1) {
+  if(i == 1) {
+    if(y >= 0) {
+      return(log(y + 1)/log(2))
+    } else {
+      return((1 - (1 - y)^2)/(2*log(2)))
+    }
+  }
+}
 
-# data <- simulate.gtm.data(1000)
-# X <- data$X
-# Y <- data$Y
-# 
+data <- simulate.gtm.data(3000)
+X <- data$X
+Y <- data$Y
+
 # dummy <- function(y) {
 #   f2.inv.est.LS(y, Y, X)
 # }
-# vals <- sapply(seq(-2, 34, 3), dummy)
+# dummy(X[1])
+# vals <- sapply(X, dummy)
 # 
-# f2_inv <- function(y, i=1) {
-#   if(i == 1) {
-#     if(y >= 0) {
-#       return(log(y + 1)/log(2))
-#     } else {
-#       return((1 - (1 - y)^2)/(2*log(2)))
-#     }
-#   } 
-# }
-# gt_vals <- sapply(seq(-2, 34, 3), f2_inv)
-# 
-# library(ggplot2)
-# ggplot() + geom_line(aes(x=seq(-2, 34, 3), y=gt_vals), colour="red") +
-#   geom_line(aes(x=seq(-2, 34, 3), y=vals), colour="blue")
+# gt_vals <- sapply(Y, f2_inv)
 
+# ggplot() + geom_line(aes(x=data$Z, y=gt_vals), colour="red")
+
+# library(ggplot2)
+# ggplot() + geom_line(aes(x=X, y=gt_vals), colour="red") +
+#   geom_line(aes(x=X, y=vals), colour="blue")
+
+dumy_f1 <- function(x) {
+  f1.est.NW(x, data$Z, X, ep.kernel)
+}
+# est_noise <- vals - sapply(X ,dumy_f1)
+# dhsic(est_noise, X)
+
+est_noise <- data$Z - sapply(X ,dumy_f1)
+dhsic(est_noise, X)
+
+dhsic(data$noise, X)

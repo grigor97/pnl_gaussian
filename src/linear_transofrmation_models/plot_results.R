@@ -55,7 +55,7 @@ save_plots <- function(est_betas1, est_betas2, name1, name2, gt_betas, alg_name,
 
 save_plots_one <- function(est_betas, gt_betas, alg_name, 
                        n=1000, m=1, lamb=0, from=1, to=100, 
-                       file_n='../plots/rank_regression/1000/prl/'){
+                       file_n='../plots/rank_regression/1000/expected_rank_ell2/'){
   if(to > length(gt_betas)) {
     to <- length(gt_betas)
   }
@@ -93,12 +93,12 @@ save_plots_one <- function(est_betas, gt_betas, alg_name,
   return(pl)
 }
 
-res1 <- fromJSON(file = "../res/rank_regression/all_betas_normal_scores_1000_1_100_13.json")
+res1 <- fromJSON(file = "../res/rank_regression/1000/all_betas_l2_lamb_10_1000_1_100_7")
 res1
 
-est_betas <- matrix(res1$est_betas, res1$num_datasets, res1$num_betas)
+est_betas <- matrix(res1$exp_betas, res1$num_datasets, res1$num_betas)
 gt_betas <- c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 10, 30, 50, 70, 100, 1000)
-save_plots_one(est_betas, gt_betas, "normal scores", from=1, to=7)
+save_plots_one(est_betas, gt_betas, "expected rank, lambda = 10", from=1, to=7)
 
 # (est_betas - matrix(gt_betas, 100, 13, byrow = T))/matrix(gt_betas, 100, 13, byrow = T)
 

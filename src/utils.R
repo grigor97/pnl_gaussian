@@ -1,5 +1,22 @@
 set.seed(12)
 
+comute.RB.Var.MSE <- function(estimates, gt_param) {
+  # Relative Bias
+  rb <- (colMeans(estimates) - gt_param)/gt_param
+  
+  # Variance
+  mean_ests <- matrix(colMeans(estimates), nrow = nrow(estimates), ncol = ncol(estimates), byrow = T)
+  vr <- colMeans((estimates - mean_ests)^2)
+  
+  # MSE
+  gt_ests <- matrix(gt_param, nrow = nrow(estimates), ncol = ncol(estimates), byrow = T)
+  ms <- colMeans((estimates - gt_ests)^2)
+  
+  res <- list("RB"=rb, "Var"=vr, "MSE"=ms)
+  
+  return(res)
+}
+
 simulate_rank_regression_data <- function(n, m, beta_max=10) {
   exponent <- function(a, pow) (abs(a)^pow)*sign(a)
   
