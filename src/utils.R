@@ -43,10 +43,10 @@ simulate_rank_regression_data_fixed_beta <- function(n, m, beta) {
   noise <- rnorm(n)
   X <- matrix(rnorm(n*m), n, m)
   
-  Y <- X %*% beta + noise
-  Y <- exponent(Y, 1/3) + 4.7
+  Z <- X %*% beta + noise
+  Y <- exponent(Z, 1/3) + 4.7
   
-  res <- list("X"=X, "Y"=Y, "beta"=beta)
+  res <- list("X"=X, "Y"=Y, "beta"=beta, "noise"=noise, "Z"=Z)
   return(res)
 }
 

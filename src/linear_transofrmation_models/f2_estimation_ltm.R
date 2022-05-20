@@ -1,7 +1,7 @@
 source("linear_transofrmation_models/beta_estimation_ltm.R")
 
 # Works for beta around 10 since otherwise log \Phi becomes NaN
-# name is rl
+# name is rl, the algorithm is motivated by the PRL for the estimation of beta
 f2.inv.est.rl <- function(Y, X, est_beta) {
   m <- ncol(X)
   n <- nrow(X)
@@ -40,7 +40,7 @@ f2.inv.est.rl <- function(Y, X, est_beta) {
   return(f2_inv_est)
 }
 
-# works the best: name is rank_reg
+# works the best: name is rank_reg, from the paper https://projecteuclid.org/journals/annals-of-statistics/volume-16/issue-4/Rank-Regression/10.1214/aos/1176351044.full
 f2.inv.est.rank.reg <- function(Y, X, est_beta) {
   ranks_Y <- rank(Y)
   empirical_cdf_Y <- ranks_Y/(length(Y)+1)
