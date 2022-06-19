@@ -1,4 +1,4 @@
-source("bivariate_pnl/ltm_bivariate_pnl.R")
+source("bivariate_pnl/ltm_biv_pnl.R")
 source("utils.R")
 library(rjson)
 library(parallel)
