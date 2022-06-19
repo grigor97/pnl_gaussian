@@ -5,8 +5,7 @@ library(parallel)
 
 run_bivariate_for_sim_data <- function(beta_alg, f2_inv_alg, sample_size) {
   data <- simulate_bivariate_pnl_idf(sample_size)
-  res <- find_bivariate_direction(data$data, beta_alg, 
-                                  f2_inv_alg, file_name = "")
+  res <- find_bivariate_direction(data$data, beta_alg, f2_inv_alg)
   return(res$est_direction == "1 -> 2")
 }
 
@@ -14,11 +13,11 @@ run_bivariate_for_sim_data <- function(beta_alg, f2_inv_alg, sample_size) {
 
 est_beta_alg <- "prl"
 est_f2_inv_alg <- "rank_reg"
-sample_sizes <- c(100)
+sample_sizes <- c(1000)
 
 all_accs <- c()
 
-num_datasets <- 4
+num_datasets <- 100
 
 numCores <- detectCores() - 1
 print(paste("num coress  --- ", numCores))
