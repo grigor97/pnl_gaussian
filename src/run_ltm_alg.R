@@ -1,4 +1,3 @@
-# library(parallel)
 library(doParallel)
 library(rjson)
 source("linear_transofrmation_models/beta_estimation_ltm.R")

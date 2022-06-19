@@ -16,7 +16,7 @@ min.dhsic.val <- function(Y, X, beta_alg, f2_inv_alg) {
   return(res)
 }
 
-find_bivariate_direction <- function(data, beta_alg, f2_inv_alg, file_name="") {
+find_bivariate_direction <- function(data, beta_alg, f2_inv_alg) {
   X <- data[, 1]
   Y <- data[, 2]
   
@@ -38,6 +38,5 @@ find_bivariate_direction <- function(data, beta_alg, f2_inv_alg, file_name="") {
   print(res2$dhsic_val)
   print(est_direction)
   
-  return(list("res1"=res1, "res2"=res2, "est_direction"=est_direction, 
-              "file_name"= file_name))
+  return(list("res1"=res1, "res2"=res2, "est_direction"=est_direction))
 }

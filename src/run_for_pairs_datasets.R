@@ -1,10 +1,12 @@
-source("bivariate_pnl/rank_reg_bivariate_pnl.R")
+source("bivariate_pnl/ltm_biv_pnl.R")
 
-# library(foreach)
-# library(doParallel)
+library(doParallel)
+no_cores <- detectCores()
+cl <- makeCluster(no_cores-1)
+registerDoParallel(cl) 
 
-# myCluster <- makeCluster(6, type = "PSOCK")
-# registerDoParallel(myCluster)
+beta_alg = "prl"
+f2_inv_alg = "rank_reg"
 
 load_pairs_run_bivariate <- function(i, files) {
   f_name <- files[i]
@@ -23,54 +25,39 @@ load_pairs_run_bivariate <- function(i, files) {
     dat <- dat[random_inds, ]
   }
   
-  res <- find_bivariate_direction(dat, rank_alg="expected_rank", lamb = 10, 
-                                  file_name = f_name)
+  res <- find_bivariate_direction(dat, beta_alg, f2_inv_alg)
   
-  print(res$est_direction)
-  print(res$res1$dhsic_val)
-  print(res$res2$dhsic_val)
-  
-  return(res)
+  return(c(f_name, res$est_direction))
 }
 
 # run for pairs
 files <- list.files(path="../data/pairs/", pattern = "*\\d.txt")
 files
 
-# load_pairs_run_bivariate(1, files)
-# 
-# foreach_res <- foreach(i=1:length(files)) %dopar% 
-# {
-#   load_pairs_run_bivariate(i, files)
-# }
-# foreach_res
-# stopCluster(myCluster)
+# print(files[-c(52, 53, 54, 55, 71, 81, 82, 83, 105)])
+files <- files[-c(52, 53, 54, 55, 71, 81, 82, 83, 105)]
+files
+# res <- load_pairs_run_bivariate(1, files)
 
-print(files[-c(81:84)])
-files <- files[-c(81:84)]
-files[1]
-df <- data.frame(f_name=character(), direction=character())
-for(i in 1:length(files)) {
-  res <- load_pairs_run_bivariate(i, files)
-  df[nrow(df)+1, ] <- c(res$f_name, res$est_direction)
+res <- foreach(i=1:length(files), .combine="rbind", .packages = c("EnvStats", "dHSIC")) %dopar% {
+  .GlobalEnv$cdf_z <- cdf_z
+  load_pairs_run_bivariate(i, files)
 }
 
-df
+res
 
-gt_dir <- readLines("../data/pairs/answers.txt")
-gt_dir <- gt_dir[1:52]
+stopCluster(cl)
 
-sum(gt_dir == df$direction)
 
-# df <- data.frame(f_name=character(), direction=character())
-# df[nrow(df)+1, ] <- c(f_name, res$est_direction)
-# print(df1)
 
-# df[df$direction == "1 -> 2", ]
-# df[df$direction == "2 -> 1", ]
 
-write.csv(df, file="../data/predictions_on_pairs_exp_rank_1_52.csv", row.names = F)
+# gt_dir <- readLines("../data/pairs/answers.txt")
+# gt_dir <- gt_dir[1:52]
+# 
+# sum(gt_dir == df$direction)
+# 
+# write.csv(df, file="../data/predictions_on_pairs_exp_rank_1_52.csv", row.names = F)
+# 
+# d <- read.csv("../data/predictions_on_pairs_exp_rank_1_52.csv", header = T)
 
-d <- read.csv("../data/predictions_on_pairs_exp_rank_1_52.csv", header = T)
 
-sum(d$direction == d$gt)

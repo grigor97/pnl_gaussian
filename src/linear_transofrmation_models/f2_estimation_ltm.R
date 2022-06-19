@@ -51,3 +51,32 @@ f2.inv.est.rank.reg <- function(Y, X, est_beta) {
 }
 
 
+
+f2.inv.est.rank.cor <- function(Y, X, est_beta) {
+  m <- ncol(X)
+  n <- nrow(X)
+  X <- X - matrix(rep(colMeans(X), n), n, m, byrow = T)
+  
+  rl_y <- function(t, y, Y, X, est_beta) {
+    m_X <- X %*% est_beta
+    G <- 0
+    for(i in 1:n) {
+      for(j in 1:n) {
+        
+      }
+    }
+    return(-lik)
+  }
+  
+  f2_inv_est <- c()
+  
+  for(y in Y) {
+    res <- optim(0, fn=rl_y,  method = "BFGS", 
+                 control = list(trace=T, REPORT=1),
+                 y=y, Y=Y, X=X, est_beta=est_beta)
+    f2_inv_est <- c(f2_inv_est, res$par)
+  }
+  
+  
+  return(f2_inv_est)
+}
