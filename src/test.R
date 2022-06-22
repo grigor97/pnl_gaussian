@@ -15,7 +15,8 @@ run_mult_ltm <- function(sample_size, beta_alg, f2_inv_alg) {
   return(res)
 }
 
-
+data = simulate.mult.pnl.erdos.renyi(100, 5)
+data$A
 
 res <- run_mult_ltm(1000, beta_alg, f2_inv_alg)
 

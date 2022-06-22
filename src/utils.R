@@ -105,3 +105,42 @@ simulate_mult_pnl <- function(n, fj2_func="cube") {
   
   return(data)
 }
+
+gen.directed.erdos.renyi.graph <- function(d) {
+  edge_prb <- 2/(d-1)
+  A <- matrix(rbinom(d^2, 1, edge_prb), d, d)
+  A <- A*upper.tri(A)
+  return(A)
+}
+
+simulate.mult.pnl.erdos.renyi <- function(n, d) {
+  f1 <- function(x) {
+    beta <- runif(2*dim(x)[2], -100, 100)
+    val <- cbind(x, x^2) %*% beta
+    return(val)
+  }
+  
+  f2 <- function(z) {
+    exponent <- function(a, pow) (abs(a)^pow)*sign(a)
+    y <- exponent(z, 1/3) + 4.7
+    return(y)
+  }
+  
+  A <- gen.directed.erdos.renyi.graph(d)
+  
+  X <- matrix(0, n, d)
+  for(j in 1:d) {
+    parents <- which(A[, j] != 0, arr.ind=T)
+    if(length(parents) == 0) {
+      X[, j] <- rnorm(n)
+    } else {
+      noise <- rnorm(n)
+      z <- f1(cbind(X[, parents])) + noise
+      y <- f2(z)
+      X[, j] <- y
+    }
+  }
+  
+  return(list("A"=A, "X"=X))
+}
+
