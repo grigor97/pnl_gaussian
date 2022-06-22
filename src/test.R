@@ -1,3 +1,25 @@
+source("multivariate_pnl/ltm_mult_pnl.R")
+source("utils.R")
+
+beta_alg <- "prl"
+f2_inv_alg <- "rank_reg"
+
+run_mult_ltm <- function(sample_size, beta_alg, f2_inv_alg) {
+  data <- simulate_mult_pnl(n=sample_size)
+  
+  df <- data.frame(data)
+  
+  res <- find_last_node_ltm(df, names(df), beta_alg, f2_inv_alg)
+  print(res)
+  
+  return(res)
+}
+
+
+
+res <- run_mult_ltm(1000, beta_alg, f2_inv_alg)
+
+
 # library(dHSIC)
 # 
 # # non identifiability

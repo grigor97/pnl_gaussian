@@ -30,8 +30,9 @@ find_last_node_ltm <- function(data, nodes, beta_alg, f2_inv_alg)
     
     Y <- as.matrix(data[node])
     X <- as.matrix(data[rem_nodes])
+    XX <- cbind(X, X^2)
     
-    res <- min.dhsic.val(Y, X, beta_alg, f2_inv_alg)
+    res <- min.dhsic.val(Y, XX, beta_alg, f2_inv_alg)
     
     dhsic_val <- res$dhsic_val
     

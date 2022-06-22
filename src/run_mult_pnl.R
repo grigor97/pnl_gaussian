@@ -1,8 +1,8 @@
 source("multivariate_pnl/full_hsic_pnl.R")
 source("multivariate_pnl/ltm_mult_pnl.R")
 source("utils.R")
-library(rjson)
-# library(parallel)
+# library(rjson)
+
 library(doParallel)
 no_cores <- detectCores()
 cl <- makeCluster(no_cores-1)
@@ -35,8 +35,8 @@ run_mult_ltm <- function(sample_size, beta_alg, f2_inv_alg) {
 
 
 
-num_datasets <- 4
-sample_size <- 100
+num_datasets <- 7
+sample_size <- 1000
 alg = 'ltm'
 beta_alg <- "prl"
 f2_inv_alg <- "rank_reg"
@@ -54,10 +54,19 @@ dummy_fun <- function(i) {
 }
 
 res <- foreach(i=1:num_datasets, .combine="rbind", .packages = c("dHSIC")) %dopar% {
+  .GlobalEnv$cdf_z <- cdf_z
   dummy_fun(i)
 }
 
+print(res)
+
+res <- data.frame(res)
 res
+rem = res[res["X4"] == "x4" & res["X1"] == "x1", ]
+print(rem)
+print(dim(rem)[1])
+
+
 result <- list("alg"=alg, "num_datasets"=num_datasets, "sample_size"=sample_size,
             "pred_order"=res, "beta_alg"=beta_alg, "f2_inv_alg"=f2_inv_alg)
 
