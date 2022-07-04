@@ -245,6 +245,20 @@ f1.est.NW <- function(x, f2_inv_Y, X, K) {
   return(f1_x)
 }
 
+noise.est.gtm <- function(Y, X) {
+  dumy.f1 <- function(x) {
+    f1.est.NW(x, est_Z, X, ep.kernel)
+  }
+  
+  dummy.f2.inv <- function(y) {
+    est_Z <- f2.inv.est.LS(y, Y, X)
+  }
+  est_Z <- sapply(Y, dummy.f2.inv)
+  est_noise <- est_Z - sapply(X ,dumy_f1)
+  
+  return(est_noise)
+}
+
 # data <- simulate.gtm.data(1000)
 # X <- data$X
 # Y <- data$Y
@@ -331,44 +345,12 @@ f1.est.NW <- function(x, f2_inv_Y, X, K) {
 # vals <- sapply(inds, dummy)
 # ggplot() + geom_line(aes(x=inds, y=vals), colour="red")
 
-
-
-
-f2_inv <- function(y, i=1) {
-  if(i == 1) {
-    if(y >= 0) {
-      return(log(y + 1)/log(2))
-    } else {
-      return((1 - (1 - y)^2)/(2*log(2)))
-    }
-  }
-}
-
-data <- simulate.gtm.data(3000)
-X <- data$X
-Y <- data$Y
-
-# dummy <- function(y) {
-#   f2.inv.est.LS(y, Y, X)
+# f2_inv <- function(y, i=1) {
+#   if(i == 1) {
+#     if(y >= 0) {
+#       return(log(y + 1)/log(2))
+#     } else {
+#       return((1 - (1 - y)^2)/(2*log(2)))
+#     }
+#   }
 # }
-# dummy(X[1])
-# vals <- sapply(X, dummy)
-# 
-# gt_vals <- sapply(Y, f2_inv)
-
-# ggplot() + geom_line(aes(x=data$Z, y=gt_vals), colour="red")
-
-# library(ggplot2)
-# ggplot() + geom_line(aes(x=X, y=gt_vals), colour="red") +
-#   geom_line(aes(x=X, y=vals), colour="blue")
-
-dumy_f1 <- function(x) {
-  f1.est.NW(x, data$Z, X, ep.kernel)
-}
-# est_noise <- vals - sapply(X ,dumy_f1)
-# dhsic(est_noise, X)
-
-est_noise <- data$Z - sapply(X ,dumy_f1)
-dhsic(est_noise, X)
-
-dhsic(data$noise, X)
