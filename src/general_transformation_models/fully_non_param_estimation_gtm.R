@@ -204,6 +204,7 @@ lambda.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
 }
 
 # FIXME choose proper arguments for Nx and kernels
+# FIXME correct the code for multi-dimensional X
 lambda.vals <- function(u, U_hat, X, K=ep.kernel, int.Kint.ep.kernel, 
                         grad.K=grad.ep.kernel, j=1, Nx=100) {
   points <- seq(min(X), max(X), (max(X) - min(X))/Nx)
@@ -241,12 +242,12 @@ f1.est.NW <- function(x, f2_inv_Y, X, K) {
   
   W <- sapply((x - X)/hx, K)/hx
   W <- W/sum(W)
-  f1_x <- sum(W*Y)
+  f1_x <- sum(W*f2_inv_Y)
   return(f1_x)
 }
 
 noise.est.gtm <- function(Y, X) {
-  dumy.f1 <- function(x) {
+  dummy.f1 <- function(x) {
     f1.est.NW(x, est_Z, X, ep.kernel)
   }
   
@@ -254,9 +255,14 @@ noise.est.gtm <- function(Y, X) {
     est_Z <- f2.inv.est.LS(y, Y, X)
   }
   est_Z <- sapply(Y, dummy.f2.inv)
-  est_noise <- est_Z - sapply(X ,dumy_f1)
+  est_g <- sapply(X ,dummy.f1)
+  est_noise <- est_Z - est_g
   
-  return(est_noise)
+  print("est_Z")
+  print(est_Z)
+  print("est_g")
+  print(est_g)  
+  return(list("est_noise"=est_noise, "est_f2_inv"=est_Z, "est_g"=est_g))
 }
 
 # data <- simulate.gtm.data(1000)

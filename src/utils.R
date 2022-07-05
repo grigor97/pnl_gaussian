@@ -144,3 +144,40 @@ simulate.mult.pnl.erdos.renyi <- function(n, d) {
   return(list("A"=A, "X"=X))
 }
 
+simulate.bv.pnl.gtm <- function(n) {
+  f1 <- function(x) {
+    beta <- runif(2*dim(x)[2], -100, 100)
+    val <- cbind(x, x^2) %*% beta
+    return(val)
+  }
+  
+  f2_inv <- function(y, i=1) {
+    if(i == 1) {
+      if(y >= 0) {
+        return(log(y + 1)/log(2))
+      } else {
+        return((1 - (1 - y)^2)/(2*log(2)))
+      }
+    } 
+  }
+  
+  f2 <- function(z, i=1) {
+    if(i == 1) {
+      if(z >= 0) {
+        return(exp(log(2)*z) - 1)
+      } else {
+        return(1 - sqrt(1 - 2*log(2)*z))
+      }
+    }
+  }
+  
+  X <- matrix(0, n, 2)
+  X[, 1] <- rnorm(n)
+  noise <- rnorm(n)
+  z <- f1(cbind(X[, 1])) + noise
+  y <- sapply(z, f2)
+  X[, 2] <- y
+  
+  return(X)
+}
+
