@@ -206,7 +206,7 @@ lambda.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
 # FIXME choose proper arguments for Nx and kernels
 # FIXME correct the code for multi-dimensional X
 lambda.vals <- function(u, U_hat, X, K=ep.kernel, int.Kint.ep.kernel, 
-                        grad.K=grad.ep.kernel, j=1, Nx=100) {
+                        grad.K=grad.ep.kernel, j=1, Nx=10) {
   points <- seq(min(X), max(X), (max(X) - min(X))/Nx)
   
   lambda_vals <- c()
