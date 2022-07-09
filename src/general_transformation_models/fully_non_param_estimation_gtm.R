@@ -63,8 +63,8 @@ classical.bandwidth <- function(X) {
 
 get.U.hat <- function(Y) {
   n <- length(Y)
-  F_hat_Y <- rank(Y)/n
-  U_hat <- (F_hat_Y - sum(Y <= 0)/n)/(sum(Y <= 1)/n - sum(Y <= 0)/n)
+  F_hat_Y <- rank(Y)
+  U_hat <- (F_hat_Y - sum(Y <= 0))/(sum(Y <= 1) - sum(Y <= 0))
   return(U_hat)
 }
 
@@ -175,8 +175,9 @@ grad.j.phi.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
 
 s.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
   grad_u_phi_hat_ux <- grad.u.phi.hat.ux(u, x, U_hat, X, K)
+  
   grad_j_phi_hat_ux <- grad.j.phi.hat.ux(u, x, U_hat, X, K, int.K, grad.K, j)
-  s <- grad_u_phi_hat_ux/grad_j_phi_hat_ux
+  s <- grad_u_phi_hat_ux/(grad_j_phi_hat_ux + 1e-7)
   return(s)
 }
 
@@ -191,12 +192,22 @@ S.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
       return(NA)
     }
   )
+  # print(u)
+  # res = integrate(s.j.hat.ux, lower=0, upper=u, x=x, U_hat=U_hat, X=X, K=ep.kernel, int.K=int.ep.kernel, grad.K=grad.ep.kernel, j)$value
   return(res)
 }
 
 lambda.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
+  
+  # print("in lambda.j.hat.ux")
+  # print("S.j.hat.ux(u, x, U_hat, X, K, int.K, grad.K, j)")
   numerator <- S.j.hat.ux(u, x, U_hat, X, K, int.K, grad.K, j)
+  # print("numerator")
+  # print(numerator)
+  # print("S.j.hat.ux(1, x, U_hat, X, K, int.K, grad.K, j)")
   denom <- S.j.hat.ux(1, x, U_hat, X, K, int.K, grad.K, j)
+  # print("denum")
+  # print(denom)
   if(is.na(numerator) | is.na(denom) | denom == 0) {
     return(NA)
   }
@@ -206,12 +217,23 @@ lambda.j.hat.ux <- function(u, x, U_hat, X, K, int.K, grad.K, j) {
 # FIXME choose proper arguments for Nx and kernels
 # FIXME correct the code for multi-dimensional X
 lambda.vals <- function(u, U_hat, X, K=ep.kernel, int.Kint.ep.kernel, 
-                        grad.K=grad.ep.kernel, j=1, Nx=10) {
+                        grad.K=grad.ep.kernel, j=1, Nx=100) {
+  
+  # print("in lambda.vals")
+  
   points <- seq(min(X), max(X), (max(X) - min(X))/Nx)
+  # points <- seq(min(X)+0.1, max(X)-0.1, (max(X) - min(X)-0.2)/Nx)
+  # points <- points[10:(length(points)-10)]
+  
+  
+  # print("points")
+  # print(points)
   
   lambda_vals <- c()
   point_vals <- c()
   for(point in points) {
+    # print("point")
+    # print(point)
     val <- lambda.j.hat.ux(u, point, U_hat, X, K, int.K, grad.K, j)
     if(is.na(val)) {
       next
@@ -225,7 +247,19 @@ lambda.vals <- function(u, U_hat, X, K=ep.kernel, int.Kint.ep.kernel,
 
 f2.inv.est.LS <- function(y, Y, X) {
   U_hat <- get.U.hat(Y)
+  # print("U_hat")
+  # print(U_hat)
+  # print("T.hat.y")
+  # print(T.hat.y(y, Y))
+  # print("X")
+  # print(X)
   res <- lambda.vals(T.hat.y(y, Y), U_hat, X)
+  print("end lambda.vals")
+  print(res)
+  
+  # print("res")
+  # print(res)
+  
   return(mean(res))
 }
 
@@ -253,6 +287,7 @@ noise.est.gtm <- function(Y, X) {
   
   dummy.f2.inv <- function(y) {
     est_Z <- f2.inv.est.LS(y, Y, X)
+    # est_Z <- f2.inv.est.LAD(y, Y, X)
   }
   est_Z <- sapply(Y, dummy.f2.inv)
   est_g <- sapply(X ,dummy.f1)

@@ -146,8 +146,9 @@ simulate.mult.pnl.erdos.renyi <- function(n, d) {
 
 simulate.bv.pnl.gtm <- function(n) {
   f1 <- function(x) {
-    beta <- runif(2*dim(x)[2], -100, 100)
-    val <- cbind(x, x^2) %*% beta
+    # beta <- runif(2*dim(x)[2], -100, 100)
+    # val <- cbind(x, x^2) %*% beta
+    val = 6*x - 3
     return(val)
   }
   
@@ -172,8 +173,11 @@ simulate.bv.pnl.gtm <- function(n) {
   }
   
   X <- matrix(0, n, 2)
-  X[, 1] <- rnorm(n)
+  # X[, 1] <- rnorm(n)
+  X[, 1] <- runif(n)
   noise <- rnorm(n)
+  noise[noise<-3] <- -3
+  noise[noise>3] <- 3
   z <- f1(cbind(X[, 1])) + noise
   y <- sapply(z, f2)
   X[, 2] <- y

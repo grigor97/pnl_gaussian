@@ -39,6 +39,7 @@ find_last_node_gtm <- function(data, nodes)
       print("min dhsic is updated")
       last_node <- node
     }
+    print("dhsic_val")
     print(dhsic_val)
   }
   
