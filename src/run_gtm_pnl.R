@@ -6,10 +6,10 @@ no_cores <- detectCores()
 cl <- makeCluster(no_cores-1)
 registerDoParallel(cl) 
 
-n = 10
+n = 100
 num_datasets <- 4
-
-res <- foreach(i=1:num_datasets, .combine="rbind", .packages = c("dHSIC"), .errorhandling="remove") %dopar% {
+# .errorhandling="remove"
+res <- foreach(i=1:num_datasets, .combine="rbind", .packages = c("dHSIC")) %dopar% {
   X <- simulate.bv.pnl.gtm(n)
   df <- data.frame(X)
   ord <- order_recovery_gtm(df)
